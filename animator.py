@@ -26,7 +26,7 @@ class Popcorn(Producer):
         return self.color
 
 
-class Fill(Producer):
+class XFill(Producer):
     def __init__(self, direction=1, size=300):
         super().__init__()
         self.color = Color(0, 0, 128)
@@ -39,6 +39,36 @@ class Fill(Producer):
             return []
         light = self.light
         self.light += 1
+        if self.light >= self.size:
+            self.done = True
+        return [light]
+
+    def color(self):
+        return self.color
+
+class FillUp():
+    def __init__(self, segment, color=Color(0, 0, 128), first=None, last=None):
+        self.semgment = segment
+        self.color = color
+        self.direction = direction
+        self.done = False
+        if first is None:
+            if direction == 1:
+                first = 0
+            else:
+                first = segment.size - 1
+        if last is None:
+            if direction == 1:
+                last = segment.size - 1
+            else:
+                last = 0
+        self.light = first
+
+    def step(self):
+        if self.done:
+            return False
+        light = self.light
+        self.light += direction
         if self.light >= self.size:
             self.done = True
         return [light]
