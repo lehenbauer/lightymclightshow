@@ -15,11 +15,11 @@ class MotionSimulator:
         self.velocity = initial_velocity
         self.acceleration = self.initial_acceleration
         self.max_velocity = max_velocity
-        self.reached_final = False
+        self.running = True
 
     def step(self):
-        if self.reached_final:
-            return (self.final_position, True)
+        if not self.running:
+            return (self.final_position, False)
 
         self.position += self.velocity
         self.velocity += self.acceleration
@@ -31,9 +31,9 @@ class MotionSimulator:
         if self.position <= self.final_position:
             self.position = self.final_position
             self.velocity = 0
-            self.reached_final = True
+            self.running = False
 
-        return (round(self.position), self.reached_final)
+        return (round(self.position), self.running)
 
     def reset(self):
         """Reset the simulator to its initial state."""
@@ -42,5 +42,5 @@ class MotionSimulator:
         self.velocity = self.initial_velocity
         self.acceleration = self.initial_acceleration
         self.max_velocity = self.initial_max_velocity
-        self.reached_final = False
+        self.running = True
 
