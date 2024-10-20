@@ -18,7 +18,7 @@ LED_INVERT = False    # True to invert the signal (when using NPN transistor lev
 LED_CHANNEL = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 LED_STRIP_TYPE = ws.WS2811_STRIP_RGB
 
-def goob():
+def initialize_strip():
     # Create NeoPixel object with appropriate configuration.
     strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, strip_type=LED_STRIP_TYPE)
     # Intialize the library (must be called once before other functions).

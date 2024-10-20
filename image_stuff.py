@@ -1,6 +1,8 @@
 
+import numpy as np
 from pathlib import Path
 from PIL import Image
+import time
 
 def list_image_files(directory, recursive = False):
     """ Returns a list of image file paths in the specified directory
@@ -47,11 +49,60 @@ def load_and_resize_image(image_path, new_width):
         new_width (int): The desired width of the resized image.
 
     Returns:
-        PIL.Image: The resized image.
+        numpy array of the resized PIL.Image
     """
     image = Image.open(image_path)
     aspect_ratio = image.width / image.height
     new_height = int(new_width / aspect_ratio)
     resized_image = image.resize((new_width, new_height))
-    return resized_image
+    pixel_array = np.array(resized_image)
+    return pixel_array
 
+
+from rpi_ws281x import Color
+
+def update_led_strip_with_row(strip, pixel_array, row):
+    """
+    Updates the LED strip with the pixel values from a specific
+    row of an image.
+
+    Args:
+        strip (PixelStrip): The LED strip object.
+        pixel_array (np.ndarray): The NumPy array representing
+        the image's pixel data.
+
+        Expected shape: (height, width, 3) for RGB.
+        row (int): The row index from the image (0-based).
+    """
+    if row >= pixel_array.shape[0]:
+        raise ValueError(f"Row {row} is out of bounds for the image height {pixel_array.shape[0]}")
+
+    # Iterate over each pixel in the specified row
+    for col in range(pixel_array.shape[1]):
+        # Extract the RGB values from the pixel array
+        r, g, b = pixel_array[row, col]
+
+        # Convert RGB values into a 32-bit color value
+        color_value = (int(r) << 16) | (int(g) << 8) | int(b)
+
+        # Set the pixel color on the strip (col is the pixel index)
+        strip.setPixelColor(col, color_value)
+
+    # Update the strip to reflect the changes
+    strip.show()
+
+def load_images(image_path, new_width):
+    """ Loads and resizes all images in the specified directory
+        and returns a list of numpy arrays
+    """
+    arrays = []
+    for file in list_image_files(image_path):
+        image_array = load_and_resize_image(file, new_width)
+        arrays.append(image_array)
+    return arrays
+
+
+def play_array(strip, image_array):
+    for i in range(image_array.shape[0]):
+        update_led_strip_with_row(strip, image_array, i)
+        time.sleep(0.02)
