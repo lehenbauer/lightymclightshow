@@ -1,7 +1,8 @@
 
 from pathlib import Path
+from PIL import Image
 
-def get_image_files_recursive(directory, recursive = False):
+def list_image_files(directory, recursive = False):
     """ Returns a list of image file paths in the specified directory
     and its subdirectories that Pillow can ingest. This function
     scans the directory recursively once and filters the files based
@@ -36,14 +37,21 @@ def get_image_files_recursive(directory, recursive = False):
 
     return image_files
 
-# Example Usage
-if __name__ == "__main__":
-    directory_path = 'sym2'  # Replace with your directory path
-    try:
-        images = get_image_files_recursive(directory_path)
-        print(f"Found {len(images)} image(s) recursively:")
-        for img in images:
-            print(img)
-    except ValueError as ve:
-        print(ve)
+
+def load_and_resize_image(image_path, new_width):
+    """ Loads an image from the specified file path and resizes it to the
+    specified width while maintaining the aspect ratio.
+
+    Args:
+        image_path (str or Path): The path to the image file.
+        new_width (int): The desired width of the resized image.
+
+    Returns:
+        PIL.Image: The resized image.
+    """
+    image = Image.open(image_path)
+    aspect_ratio = image.width / image.height
+    new_height = int(new_width / aspect_ratio)
+    resized_image = image.resize((new_width, new_height))
+    return resized_image
 
