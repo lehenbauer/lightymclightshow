@@ -18,31 +18,46 @@ def blackout(strip):
 # Create dispatcher
 dispatcher = Dispatcher(strip)
 
-# Add a background wipe
+# Add a background wipe - green
 wipe = WipeLowHigh(strip, dispatcher.background)
-dispatcher.run_background_effect(wipe.start(color=(0, 20, 0), speed=1.0))
+dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, speed=1.0))
 
-# Add a fade after the wipe
+dispatcher.run()
+
+# Add a fade after the wipe - to purple
 fade = FadeBackground(strip, dispatcher.background)
-dispatcher.run_background_effect(fade.start(target_color=(20, 0, 20), duration=2.0))
+dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=2.0))
 
-# Add a foreground pulse
+dispatcher.run()
+
+blackout(strip)
+
+# Add a foreground pulse - blue to white
 pulse = Pulse(strip)
-dispatcher.run_foreground_effect(pulse.start(center=50, base_color=(0, 0, 100)))
+dispatcher.run_foreground_effect(
+    pulse.start(center=50, base_r=0, base_g=0, base_b=100)
+)
+
+dispatcher.run()
+
+blackout(strip)
 
 # Add sparkles that run for 5 seconds
 sparkle = Sparkle(strip)
-dispatcher.run_foreground_effect(sparkle.start(density=0.05, duration=5.0))
+dispatcher.run_foreground_effect(
+    sparkle.start(r=255, g=255, b=255, density=0.05, duration=5.0)
+)
 
-# Add a continuous chase effect
+dispatcher.run()
+
+# Add a continuous chase effect - red
 chase = Chase(strip)
-dispatcher.run_foreground_effect(chase.start(color=(255, 0, 0), speed=2.0))
+dispatcher.run_foreground_effect(
+    chase.start(r=255, g=0, b=0, speed=2.0)
+)
 
 # Run the animation
-#dispatcher.run()  # Runs until all effects complete
-dispatcher.run(duration=20)  # Runs for 20s
+dispatcher.run()  # Runs until all effects complete
 
 # To stop a continuous effect manually:
-#dispatcher.remove_foreground_effect(chase)
-
-
+#dispatcher.stop_foreground_effect(chase)
