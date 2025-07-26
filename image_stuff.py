@@ -98,11 +98,11 @@ def load_images(image_path, new_width):
     arrays = []
     for file in list_image_files(image_path):
         image_array = load_and_resize_image(file, new_width)
-        arrays.append(image_array)
+        arrays.append((file, image_array))
     return arrays
 
 
 def play_array(strip, image_array):
     for i in range(image_array.shape[0]):
         update_led_strip_with_row(strip, image_array, i)
-        time.sleep(0.02)
+        time.sleep(0.08)
