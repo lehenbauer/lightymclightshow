@@ -25,11 +25,11 @@ class Strip:
     def blackout(self):
         """ blackout all the pixels in the background array
         and and physically clear the strip."""
-        self.clear_background()
+        self.set_background()
         self.copy_background_to_strip()
         self.show()
 
-    def clear_background(self, r=0, g=0, b=0):
+    def set_background(self, r=0, g=0, b=0):
         """Set all background pixels to a specific color."""
         color = Color(r, g, b)
         self.background[:] = [color] * self.width
@@ -38,6 +38,12 @@ class Strip:
         """Copy the background buffer to the physical strip."""
         for i in range(self.width):
             self.strip.setPixelColor(i, self.background[i])
+
+    def copy_color_to_strip(self, r=0, g=0, b=0):
+        """Copy a specific color to the physical strip."""
+        color = Color(r, g, b)
+        for i in range(self.width):
+            self.strip.setPixelColor(i, color)
 
     def show(self):
         """Update the physical strip to show the current pixel values."""

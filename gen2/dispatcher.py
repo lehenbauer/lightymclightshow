@@ -187,11 +187,17 @@ class Dispatcher:
         # Step all foreground effects and remove completed ones
         completed = []
         for effect in self.foreground_effects:
+            if effect.strip not in strips_to_update:
+                # no background effect got copied to the strip,
+                # so clear the strip to remove residual pixels
+                # from prior foreground effects
+                effect.strip.copy_color_to_strip()
+                strips_to_update.add(effect.strip)
+
             elapsed = time.time() - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
-            else:
-                strips_to_update.add(effect.strip)
+
         for effect in completed:
             self.foreground_effects.remove(effect)
 
