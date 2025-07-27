@@ -7,49 +7,53 @@ import sys
 
 from hardware import *
 from dispatcher import *
+from strip import Strip
 
 
 def run_demo():
     """Run the LED demo sequence."""
-    strip = initialize_strip()
+    physical_strip = initialize_strip()
+    strip = Strip(physical_strip)
 
     # Create dispatcher
-    dispatcher = Dispatcher(strip)
+    dispatcher = Dispatcher()
 
     # Run an image in the background
-    image_bg = ImageBackground(strip, dispatcher.background, '../sym2/symmetry_4b3f847e9b02d_hires.jpg')
+    FILE = '../symmetric/nEeMBfm.png'
+    # FILE ='../sym2/symmetry_4b3f847e9b02d_hires.jpg'
+    image_bg = ImageBackground(strip, FILE)
     dispatcher.run_background_effect(
-        image_bg.start(duration=5.0)
+        image_bg.start(duration=20.0)
     )
 
     # Add a background wipe - green (1 second duration)
-    wipe = WipeLowHigh(strip, dispatcher.background)
+    wipe = WipeLowHigh(strip)
     dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=3.0))
 
     dispatcher.run()
 
-    inside_out_wipe = WipeInsideOut(strip, dispatcher.background)
+    inside_out_wipe = WipeInsideOut(strip)
     dispatcher.run_background_effect(inside_out_wipe.start(r=30, g=20, b=50, duration=3.0))
 
     dispatcher.run()
 
-    outside_in_wipe = WipeOutsideIn(strip, dispatcher.background)
+    outside_in_wipe = WipeOutsideIn(strip)
     dispatcher.run_background_effect(outside_in_wipe.start(r=0, g=20, b=100, duration=3.0))
 
     dispatcher.run()
 
-    venetian_blinds = VenetianBlinds(strip, dispatcher.background)
+    venetian_blinds = VenetianBlinds(strip)
     dispatcher.run_background_effect(venetian_blinds.start(r=50, g=100, b=50, num_blinds=10, duration=1.5))
 
     dispatcher.run()
 
     # Add a fade after the wipe - to purple
-    fade = FadeBackground(strip, dispatcher.background)
+    fade = FadeBackground(strip)
     dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=3.0))
 
     dispatcher.run()
 
-    dispatcher.blackout()
+    strip.blackout()
 
     # Add a foreground pulse - blue to white
     pulse = Pulse(strip)
@@ -59,7 +63,7 @@ def run_demo():
 
     dispatcher.run()
 
-    dispatcher.blackout()
+    strip.blackout()
 
     # Add sparkles that run for 5 seconds
     sparkle = Sparkle(strip)
@@ -69,7 +73,7 @@ def run_demo():
 
     dispatcher.run()
 
-    dispatcher.blackout()
+    strip.blackout()
 
     # Add a continuous chase effect - red at 20 pixels/second
     chase = Chase(strip)
@@ -82,11 +86,11 @@ def run_demo():
         chase2.start(r=0, g=0, b=255, speed=25.0, dot_width=20, duration=10)
     )
 
-    dispatcher.blackout()
+    strip.blackout()
     # Run the animation
     dispatcher.run()  # Runs until all effects complete
 
-    dispatcher.blackout()
+    strip.blackout()
 
     # To stop a continuous effect manually:
     #dispatcher.stop_foreground_effect(chase)
@@ -98,10 +102,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         # Clean up and exit gracefully
         print("\nKeyboard interrupt received. Turning off LEDs and exiting...")
-        try:
-            strip = initialize_strip()
-            dispatcher = Dispatcher(strip)
-            dispatcher.blackout()
-        except:
-            pass  # If we can't blackout, just exit
-        sys.exit(0)
+        # Note: Can't access strip here since it's local to run_demo()
+        # The application will exit and cleanup should happen automatically

@@ -10,7 +10,7 @@ class Effect(ABC):
 
     def __init__(self, strip):
         self.strip = strip
-        self.width = strip.numPixels()
+        self.width = strip.width
 
     def start(self, **kwargs):
         """Start the effect with given parameters."""
@@ -118,9 +118,9 @@ class Effect(ABC):
 class BackgroundEffect(Effect):
     """Base class for effects that modify background values."""
 
-    def __init__(self, strip, background):
+    def __init__(self, strip):
         super().__init__(strip)
-        self.background = background
+        self.background = strip.background
 
 
 class ForegroundEffect(Effect):
@@ -129,16 +129,11 @@ class ForegroundEffect(Effect):
 
 
 class Dispatcher:
-    """Manages the LED strip animation loop with background and foreground effects."""
+    """Manages the animation loop for effects across multiple strips."""
 
-    def __init__(self, strip, fps=100):
-        self.strip = strip
+    def __init__(self, fps=100):
         self.fps = fps
         self.frame_time = 1.0 / fps
-        self.width = strip.numPixels()
-
-        # Background buffer - what pixels return to each frame
-        self.background = [Color(0, 0, 0)] * self.width
 
         # Active effects
         self.background_effects = []
@@ -146,13 +141,6 @@ class Dispatcher:
 
         # Timing
         self.frame_count = 0
-
-    def blackout(self):
-        black = Color(0, 0, 0)
-        for i in range(self.width):
-            self.strip[i] = black
-            self.background[i] = black
-        self.strip.show()
 
     def run_background_effect(self, effect):
         """Add a background effect to the active list."""
@@ -174,14 +162,12 @@ class Dispatcher:
         if effect in self.foreground_effects:
             self.foreground_effects.remove(effect)
 
-    def clear_background(self, r=0, g=0, b=0):
-        """Set all background pixels to a specific color."""
-        color = Color(r, g, b)
-        self.background = [color] * self.width
-
     def run_frame(self):
         """Process one frame of animation."""
         frame_start = time.time()
+
+        # Group effects by strip for efficient processing
+        strips_to_update = set()
 
         # Step all background effects and remove completed ones
         completed = []
@@ -189,12 +175,14 @@ class Dispatcher:
             elapsed = time.time() - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
+            else:
+                strips_to_update.add(effect.strip)
         for effect in completed:
             self.background_effects.remove(effect)
 
-        # Copy background to strip
-        for i in range(self.width):
-            self.strip.setPixelColor(i, self.background[i])
+        # Copy background to strip for each affected strip
+        for strip in strips_to_update:
+            strip.copy_background_to_strip()
 
         # Step all foreground effects and remove completed ones
         completed = []
@@ -202,11 +190,14 @@ class Dispatcher:
             elapsed = time.time() - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
+            else:
+                strips_to_update.add(effect.strip)
         for effect in completed:
             self.foreground_effects.remove(effect)
 
-        # Show the frame
-        self.strip.show()
+        # Show the frame for all updated strips
+        for strip in strips_to_update:
+            strip.show()
 
         # Sleep to maintain frame rate
         elapsed = time.time() - frame_start
@@ -404,16 +395,15 @@ class VenetianBlinds(BackgroundEffect):
 class ImageBackground(BackgroundEffect):
     """Play an image row by row into the background array."""
 
-    def __init__(self, strip, background, image_path):
+    def __init__(self, strip, image_path):
         """
         Initialize the ImageBackground effect and load the image.
 
         Args:
-            strip: The LED strip object
-            background: The background array
+            strip: The Strip object
             image_path (str): Path to the image file to load
         """
-        super().__init__(strip, background)
+        super().__init__(strip)
         self.image_path = image_path
 
         # Load and resize the image to match strip width at instantiation time
@@ -648,15 +638,20 @@ class Chase(ForegroundEffect):
 
 # Example usage
 """
+# Create physical strip and wrap it
+from strip import Strip
+physical_strip = initialize_strip()
+strip = Strip(physical_strip)
+
 # Create dispatcher
-dispatcher = Dispatcher(strip)
+dispatcher = Dispatcher()
 
 # Run a background wipe - green (1 second duration)
-wipe = WipeLowHigh(strip, dispatcher.background)
+wipe = WipeLowHigh(strip)
 dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=1.0))
 
 # Run a fade after the wipe - to purple
-fade = FadeBackground(strip, dispatcher.background)
+fade = FadeBackground(strip)
 dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=2.0))
 
 # Run a foreground pulse - blue to white
@@ -678,9 +673,9 @@ dispatcher.run_foreground_effect(
 )
 
 # Run an image in the background
-image_bg = ImageBackground(strip, dispatcher.background)
+image_bg = ImageBackground(strip, 'path/to/image.jpg')
 dispatcher.run_background_effect(
-    image_bg.start(image_path='path/to/image.jpg', duration=5.0, loop=True)
+    image_bg.start(duration=5.0, loop=True)
 )
 
 # Run the animation
