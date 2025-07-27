@@ -9,11 +9,11 @@ from hardware import *
 from dispatcher import *
 from strip import Strip
 
+physical_strip = initialize_strip()
+strip = Strip(physical_strip)
 
-def run_demo():
+def run_demo(strip):
     """Run the LED demo sequence."""
-    physical_strip = initialize_strip()
-    strip = Strip(physical_strip)
 
     # Create dispatcher
     dispatcher = Dispatcher()
@@ -98,9 +98,8 @@ def run_demo():
 
 if __name__ == "__main__":
     try:
-        run_demo()
+        run_demo(strip)
     except KeyboardInterrupt:
         # Clean up and exit gracefully
         print("\nKeyboard interrupt received. Turning off LEDs and exiting...")
-        # Note: Can't access strip here since it's local to run_demo()
-        # The application will exit and cleanup should happen automatically
+        strip.blackout()
