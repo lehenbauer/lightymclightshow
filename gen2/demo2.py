@@ -23,7 +23,7 @@ def run_demo(strip):
     # FILE ='../sym2/symmetry_4b3f847e9b02d_hires.jpg'
     image_bg = ImageBackground(strip, FILE)
     dispatcher.run_background_effect(
-        image_bg.start(duration=20.0)
+        image_bg.start(duration=10.0)
     )
 
     # Add a background wipe - green (1 second duration)
@@ -75,15 +75,21 @@ def run_demo(strip):
 
     strip.blackout()
 
-    # Add a continuous chase effect - red at 20 pixels/second
+    # Add a continuous chase effect - red at 50 pixels/second
     chase = Chase(strip)
     dispatcher.run_foreground_effect(
-        chase.start(r=255, g=0, b=0, speed=50.0, dot_width=10, duration=10)
+        chase.start(r=50, g=0, b=0, speed=50.0, dot_width=10, duration=10)
     )
 
+    # and a continuous chase effect blue at 25 pixels/sec
     chase2 = Chase(strip)
     dispatcher.run_foreground_effect(
-        chase2.start(r=0, g=0, b=255, speed=25.0, dot_width=20, duration=10)
+        chase2.start(r=0, g=0, b=50, speed=25.0, dot_width=20, duration=10)
+    )
+
+    # and bring sparkle back
+    dispatcher.run_foreground_effect(
+        sparkle.start(r=255, g=255, b=255, density=0.05, duration=10.0)
     )
 
     strip.blackout()
