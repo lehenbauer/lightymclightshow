@@ -1,8 +1,7 @@
-
 import numpy as np
 from pathlib import Path
 from PIL import Image
-import time
+from rpi_ws281x import Color
 
 def list_image_files(directory, recursive = False):
     """ Returns a list of image file paths in the specified directory
@@ -12,6 +11,7 @@ def list_image_files(directory, recursive = False):
 
     Args:
         directory (str or Path): The path to the directory to search for image files.
+        recursive (bool): Whether to search subdirectories recursively.
 
     Returns:
         list: A list of image file paths as strings.
@@ -52,44 +52,21 @@ def load_and_resize_image(image_path, new_width):
         numpy array of the resized PIL.Image
     """
     image = Image.open(image_path)
+    if image.mode == 'RGBA':
+        # Create a new image with a black background
+        background = Image.new('RGB', image.size, (0, 0, 0))
+        # Paste the RGBA image onto the black background, using the alpha channel as a mask
+        background.paste(image, (0, 0), image)
+        image = background
+    elif image.mode != 'RGB':
+        image = image.convert('RGB')
+        
     aspect_ratio = image.width / image.height
     new_height = int(new_width / aspect_ratio)
     resized_image = image.resize((new_width, new_height))
     pixel_array = np.array(resized_image)
     return pixel_array
 
-
-from rpi_ws281x import Color
-
-def update_led_strip_with_row(strip, pixel_array, row):
-    """
-    Updates the LED strip with the pixel values from a specific
-    row of an image.
-
-    Args:
-        strip (PixelStrip): The LED strip object.
-        pixel_array (np.ndarray): The NumPy array representing
-        the image's pixel data.
-
-        Expected shape: (height, width, 3) for RGB.
-        row (int): The row index from the image (0-based).
-    """
-    if row >= pixel_array.shape[0]:
-        raise ValueError(f"Row {row} is out of bounds for the image height {pixel_array.shape[0]}")
-
-    # Iterate over each pixel in the specified row
-    for col in range(pixel_array.shape[1]):
-        # Extract the RGB values from the pixel array
-        r, g, b = pixel_array[row, col]
-
-        # Convert RGB values into a 32-bit color value
-        color_value = (int(r) << 16) | (int(g) << 8) | int(b)
-
-        # Set the pixel color on the strip (col is the pixel index)
-        strip.setPixelColor(col, color_value)
-
-    # Update the strip to reflect the changes
-    strip.show()
 
 def load_images(image_path, new_width):
     """ Loads and resizes all images in the specified directory
@@ -102,7 +79,26 @@ def load_images(image_path, new_width):
     return arrays
 
 
-def play_array(strip, image_array):
-    for i in range(image_array.shape[0]):
-        update_led_strip_with_row(strip, image_array, i)
-        time.sleep(0.08)
+def get_row_pixels(pixel_array, row):
+    """
+    Get pixel values from a specific row of an image as Color objects.
+
+    Args:
+        pixel_array (np.ndarray): The NumPy array representing the image's pixel data.
+                                  Expected shape: (height, width, 3) for RGB.
+        row (int): The row index from the image (0-based).
+
+    Returns:
+        list: A list of Color objects for the row.
+    """
+    if row >= pixel_array.shape[0]:
+        raise ValueError(f"Row {row} is out of bounds for the image height {pixel_array.shape[0]}")
+
+    row_colors = []
+    for col in range(pixel_array.shape[1]):
+        # Extract the RGB values from the pixel array
+        r, g, b = pixel_array[row, col]
+        # Create Color object
+        row_colors.append(Color(int(r), int(g), int(b)))
+    
+    return row_colors
