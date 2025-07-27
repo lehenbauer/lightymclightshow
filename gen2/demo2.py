@@ -24,6 +24,7 @@ def run_demo(strip):
     FILE = '../images/custom/circles1.png'
     # FILE ='../sym2/symmetry_4b3f847e9b02d_hires.jpg'
     image_bg = ImageBackground(strip, FILE)
+    print("image")
     dispatcher.run_background_effect(
         image_bg.start(duration=20.0)
     )
@@ -35,6 +36,7 @@ def run_demo(strip):
 
     dispatcher.run()
 
+    print("wipes")
     inside_out_wipe = WipeInsideOut(strip)
     dispatcher.run_background_effect(inside_out_wipe.start(r=30, g=20, b=50, duration=3.0))
 
@@ -46,7 +48,7 @@ def run_demo(strip):
     dispatcher.run()
 
     venetian_blinds = VenetianBlinds(strip)
-    dispatcher.run_background_effect(venetian_blinds.start(r=50, g=100, b=50, num_blinds=10, duration=1.5))
+    dispatcher.run_background_effect(venetian_blinds.start(r=0, g=0, b=0, num_blinds=10, duration=1.5))
 
     dispatcher.run()
 
@@ -59,11 +61,16 @@ def run_demo(strip):
     strip.blackout()
 
     # Add a foreground pulse - blue to white
+    print("pulse")
     pulse = Pulse(strip)
     dispatcher.run_foreground_effect(
-        pulse.start(center=50, base_r=0, base_g=0, base_b=100)
+        pulse.start(center=125, r=0, g=0, b=100, explode_r=255, explode_g=255, explode_b=255, duration=2.0, max_width=50)
     )
+    dispatcher.run()
 
+    dispatcher.run_foreground_effect(
+        pulse.start(center=225, r=0, g=100, b=0, explode_r=255, explode_g=255, explode_b=255, duration=2.0, max_width=25)
+    )
     dispatcher.run()
 
     strip.blackout()

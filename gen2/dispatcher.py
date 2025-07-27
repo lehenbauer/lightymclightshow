@@ -474,80 +474,79 @@ class ImageBackground(BackgroundEffect):
 # Foreground Effects
 
 class Pulse(ForegroundEffect):
-    """Pulse effect that expands and contracts with brightness changes."""
+    """
+    A firework-like pulse that expands rapidly and then fades.
+    The expansion slows down over time, and the color brightens to an explosion
+    color before fading out.
+    """
 
-    def init(self, center=None, base_r=0, base_g=0, base_b=255,
-            max_r=255, max_g=255, max_b=255, initial_width=10, max_width=None):
+    def init(self, center=None, r=0, g=0, b=255,
+             explode_r=255, explode_g=255, explode_b=255,
+             duration=1.5, max_width=None):
+
         if center is None:
             center = self.width // 2
         if max_width is None:
-            max_width = min(self.width, initial_width * 4)
+            max_width = self.width
 
         self.center = center
-        self.base_color = Color(base_r, base_g, base_b)
-        self.max_color = Color(max_r, max_g, max_b)
-        self.initial_width = initial_width
+        self.base_color = Color(r, g, b)
+        self.explode_color = Color(explode_r, explode_g, explode_b)
+        self.duration = duration
         self.max_width = max_width
 
-        # Animation timing (in seconds)
-        self.rapid_expansion_time = 0.7
-        self.slow_expansion_time = 0.3
-        self.slow_decay_time = 0.5
-        self.rapid_decay_time = 0.5
-        self.total_duration = (self.rapid_expansion_time + self.slow_expansion_time +
-                             self.slow_decay_time + self.rapid_decay_time)
+    def ease_out_quart(self, t):
+        """Easing function for a natural deceleration."""
+        return 1 - pow(1 - t, 4)
 
     def step(self, elapsed_time):
-        # Determine phase and progress
-        if elapsed_time < self.rapid_expansion_time:
-            t = elapsed_time / self.rapid_expansion_time
-            width_factor = 1 - math.exp(-3 * t)
-            brightness_factor = t ** 1.5
-        elif elapsed_time < self.rapid_expansion_time + self.slow_expansion_time:
-            t = (elapsed_time - self.rapid_expansion_time) / self.slow_expansion_time
-            width_factor = 0.95 + 0.05 * t
-            brightness_factor = 0.9 + 0.1 * t
-        elif elapsed_time < self.rapid_expansion_time + self.slow_expansion_time + self.slow_decay_time:
-            t = (elapsed_time - self.rapid_expansion_time - self.slow_expansion_time) / self.slow_decay_time
-            width_factor = 1.0
-            brightness_factor = 1.0 - 0.3 * t
-        else:
-            t = (elapsed_time - self.rapid_expansion_time - self.slow_expansion_time -
-                 self.slow_decay_time) / self.rapid_decay_time
-            t = min(t, 1.0)  # Clamp to avoid negative values
-            width_factor = 1.0 - 0.5 * t
-            brightness_factor = 0.7 * (1 - t) ** 2
+        # Normalize time from 0 to 1
+        progress = min(elapsed_time / self.duration, 1.0)
 
-        # Calculate current width
-        width_range = self.max_width - self.initial_width
-        current_width = self.initial_width + width_range * width_factor
+        # Use easing function to control expansion
+        eased_progress = self.ease_out_quart(progress)
 
-        # Calculate color using interpolation
-        color = Effect.interpolate_color(self.base_color, self.max_color, brightness_factor)
+        # --- Width Calculation ---
+        # The pulse expands to its maximum width based on the eased progress.
+        current_width = self.max_width * eased_progress
 
-        # Draw the pulse
+        # --- Color and Brightness Calculation ---
+        # The color interpolates towards the explode_color as it expands.
+        # The brightness peaks mid-way and then fades to black.
+        color = Effect.interpolate_color(self.base_color, self.explode_color, eased_progress)
+
+        # Brightness fades out over the second half of the duration
+        brightness = 1.0
+        if progress > 0.5:
+            brightness = 1.0 - (progress - 0.5) * 2
+
+        # --- Drawing the Pulse ---
         half_width = current_width / 2
+        r, g, b = Effect.unpack_color(color)
 
         for i in range(self.width):
             distance = abs(i - self.center)
 
             if distance <= half_width:
+                # Intensity is highest at the center and falls off towards the edges
+                # using a Gaussian distribution for a soft look.
                 if half_width > 0:
                     intensity = math.exp(-(distance / half_width) ** 2)
                 else:
                     intensity = 1.0 if distance == 0 else 0.0
 
-                # Apply intensity to color
-                r, g, b = Effect.unpack_color(color)
+                # Apply final brightness fade
+                final_intensity = intensity * brightness
+
                 pixel_color = Color(
-                    int(r * intensity),
-                    int(g * intensity),
-                    int(b * intensity)
+                    int(r * final_intensity),
+                    int(g * final_intensity),
+                    int(b * final_intensity)
                 )
                 self.strip.setPixelColor(i, pixel_color)
 
         # Return True if still running, False if complete
-        return elapsed_time < self.total_duration
+        return elapsed_time < self.duration
 
 class Sparkle(ForegroundEffect):
     """Random sparkles that fade in and out."""

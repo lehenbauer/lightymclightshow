@@ -35,7 +35,7 @@ blackout(strip)
 # Add a foreground pulse - blue to white
 pulse = Pulse(strip)
 dispatcher.run_foreground_effect(
-    pulse.start(center=50, base_r=0, base_g=0, base_b=100)
+    pulse.start(center=50, r=0, g=0, b=100, explode_r=255, explode_g=255, explode_b=255, duration=2.0)
 )
 
 dispatcher.run()
