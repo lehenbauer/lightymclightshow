@@ -543,7 +543,6 @@ class Pulse(ForegroundEffect):
         # Return True if still running, False if complete
         return elapsed_time < self.total_duration
 
-
 class Sparkle(ForegroundEffect):
     """Random sparkles that fade in and out."""
 
@@ -561,10 +560,19 @@ class Sparkle(ForegroundEffect):
         self.frame_time = elapsed_time - self.last_time
         self.last_time = elapsed_time
 
-        # Add new sparkles based on density (sparkles per second)
-        for i in range(self.width):
-            if i not in self.sparkles and random.random() < self.density * self.frame_time:
-                self.sparkles[i] = (elapsed_time, True)
+        # Add new sparkles based on density
+        # The number of sparkles to add is proportional to the strip width,
+        # density, and time elapsed since the last frame.
+        num_new_sparkles_float = self.width * self.density * self.frame_time
+        num_new_sparkles = int(num_new_sparkles_float)
+        # Add a fractional sparkle based on probability
+        if random.random() < num_new_sparkles_float - num_new_sparkles:
+            num_new_sparkles += 1
+
+        for _ in range(num_new_sparkles):
+            pos = random.randint(0, self.width - 1)
+            # A new sparkle will reset the fade-in of an existing one at the same position
+            self.sparkles[pos] = (elapsed_time, True)
 
         # Update existing sparkles
         to_remove = []
@@ -603,7 +611,6 @@ class Sparkle(ForegroundEffect):
 
         # Run forever if no duration
         return True
-
 
 class Chase(ForegroundEffect):
     """A dot or group of dots that chase around the strip."""
