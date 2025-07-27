@@ -18,6 +18,16 @@ dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=3.0))
 
 dispatcher.run()
 
+inside_out_wipe = WipeInsideOut(strip, dispatcher.background)
+dispatcher.run_background_effect(inside_out_wipe.start(r=30, g=20, b=50, duration=3.0))
+
+dispatcher.run()
+
+outside_in_wipe = WipeOutsideIn(strip, dispatcher.background)
+dispatcher.run_background_effect(outside_in_wipe.start(r=0, g=20, b=100, duration=3.0))
+
+dispatcher.run()
+
 # Add a fade after the wipe - to purple
 fade = FadeBackground(strip, dispatcher.background)
 dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=3.0))
