@@ -3,7 +3,7 @@ import math
 import random
 from abc import ABC, abstractmethod
 from rpi_ws281x import Color
-from image_stuff import load_and_resize_image, get_row_pixels
+from image_stuff import load_and_resize_image, get_row_pixels, list_image_files
 
 class Effect(ABC):
     """Base class for all effects."""
