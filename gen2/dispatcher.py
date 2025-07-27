@@ -146,6 +146,13 @@ class Dispatcher:
         # Timing
         self.frame_count = 0
 
+    def blackout(self):
+        black = Color(0, 0, 0)
+        for i in range(self.width):
+            self.strip[i] = black
+            self.background[i] = black
+        self.strip.show()
+
     def run_background_effect(self, effect):
         """Add a background effect to the active list."""
         self.background_effects.append(effect)
@@ -492,10 +499,11 @@ class Sparkle(ForegroundEffect):
 class Chase(ForegroundEffect):
     """A dot or group of dots that chase around the strip."""
 
-    def init(self, r=255, g=0, b=0, dot_size=3, speed=10.0, reverse=False):
+    def init(self, r=255, g=0, b=0, dot_width=3, speed=10.0, duration=10.0, reverse=False):
         self.color = Color(r, g, b)
-        self.dot_size = dot_size
-        self.speed = speed  # pixels per second
+        self.dot_width = dot_width
+        self.speed = speed # movement in pixels per second
+        self.duration = duration
         self.reverse = reverse
 
     def step(self, elapsed_time):
@@ -507,11 +515,15 @@ class Chase(ForegroundEffect):
             position = distance % self.width
 
         # Draw the dot(s)
-        for i in range(self.dot_size):
+        for i in range(self.dot_width):
             pixel_pos = int((position + i) % self.width)
             self.strip.setPixelColor(pixel_pos, self.color)
 
-        # Chase runs forever
+        if self.duration is not None:
+            # If a duration is set, check if we should stop
+            return elapsed_time < self.duration
+
+        # If no duration, run continuously
         return True
 
 
