@@ -1,14 +1,17 @@
 
 
-## ideas
+# lightymclightshow
 
-define segments
+This is python software to control as many WS2812B RGB LEDs as you can reasonably put on a Raspberry Pi.
 
-number the lights from 0 within a segment
+It uses the rpi_ws281x library to control the LEDs and gpsd to get GPS data.
 
-the dock segment might have a horizontal that's 100 wide and four verticals that are 40 high.
+It has a dispatcher and a bunch of effects and many effects can be run simultaneously.
 
-so we might have horiz and vert1 through vert4
+Currently the action is in the gen2 directory.  Directories named "attic" contain old stuff and are unimportant.
+
+The code and effects are in gen2/dispatcher.py.
+
 
 ## prerequisites
 
@@ -27,6 +30,8 @@ add to /etc/modprobe.d/snd-blacklist.conf
 ```
 blacklist snd_bcm2835
 ```
+
+## notes on raspberry pi pins
 
 pwm0 is pin 32, the fifth one up from the bottom right if facing the board with the connector on the upper right -- is this right, better confirm
 
@@ -50,34 +55,46 @@ python
 
 you need to be root
 
-Rpython3 -m venv venv
+python3 -m venv venv
 . venv/bin/activate
 
+## if using SPI on Pi 4
+
 on pi 4 add to /boot/config.txt
+
+```
 core_freq=500
 core_freq_min=500
+```
 
 to avoid the idle CPU scaling changing the SPI frequency and breaking the timings
 
 ## flickering
 
-it's flickering
+if it flickers when a lot of LEDs are on then your power supply is probably not sufficient.
 
-says 249 ohm resistor
+We are using a level converter to raise the 3.3V GPIO signal to 5V for the LED data channel.
 
-660 worked.
+We are using WS2815 LEDs which are 12V.
 
-the level converter probably isn't fast enough.
+Found somewhere someone says add a 249 ohm resistor.  playing around, 660 worked.  but the problem probably was power supply weakness anyway.
+
+the level converter probably should be faster.  it looks a little soft on the scope.
 
 i'm getting faster ones.
 
-however i think the main problem is just not having enough power
+however i the main problem was just not having enough power
 
 ## playing images a row at a time to the LEDs
+
+i wrote some stuff that can play lines of an image successively to the LEDs.  It's OK and should be revisited in light of how gen2 works.
+
 
 play images, play2.py
 
 ## GPS
+
+We are going to have effects that are GPS-aware.
 
 USB GPS based on the ublox 7 chipset, $20 on Amazon.
 
@@ -133,9 +150,13 @@ it supports len(strip) to get the number of elements/RGB LEDs in the strip
 
 you can also read the color values of a pixel using strip[0] which will return a Color object with the RGB values or a slice like strip[0:300] will return a list of colors for those pixels
 
+## ideas
 
+define segments
 
+number the lights from 0 within a segment
 
+the dock segment might have a horizontal that's 100 wide and four verticals that are 40 high.
 
-
+so we might have horiz and vert1 through vert4
 
