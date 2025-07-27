@@ -18,15 +18,15 @@ def blackout(strip):
 # Create dispatcher
 dispatcher = Dispatcher(strip)
 
-# Add a background wipe - green
+# Add a background wipe - green (1 second duration)
 wipe = WipeLowHigh(strip, dispatcher.background)
-dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, speed=1.0))
+dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=3.0))
 
 dispatcher.run()
 
 # Add a fade after the wipe - to purple
 fade = FadeBackground(strip, dispatcher.background)
-dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=2.0))
+dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=3.0))
 
 dispatcher.run()
 
@@ -50,10 +50,10 @@ dispatcher.run_foreground_effect(
 
 dispatcher.run()
 
-# Add a continuous chase effect - red
+# Add a continuous chase effect - red at 20 pixels/second
 chase = Chase(strip)
 dispatcher.run_foreground_effect(
-    chase.start(r=255, g=0, b=0, speed=2.0)
+    chase.start(r=255, g=0, b=0, speed=20.0)
 )
 
 # Run the animation
