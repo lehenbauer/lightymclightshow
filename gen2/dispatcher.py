@@ -356,6 +356,50 @@ class FadeBackground(BackgroundEffect):
         return elapsed_time < self.duration
 
 
+class VenetianBlinds(BackgroundEffect):
+    """Wipes in a new background color using multiple simultaneous wipes like venetian blinds."""
+
+    def init(self, r=255, g=255, b=255, duration=1.0, num_blinds=5):
+        self.color = Color(r, g, b)
+        self.duration = duration
+        self.num_blinds = num_blinds
+
+        # Calculate the size of each blind section
+        self.blind_size = self.width // num_blinds
+        self.remainder = self.width % num_blinds  # Handle any leftover pixels
+
+    def step(self, elapsed_time):
+        # Calculate how much of each blind should be filled at this time
+        progress = min(elapsed_time / self.duration, 1.0)
+
+        for blind_index in range(self.num_blinds):
+            # Calculate start position for this blind
+            blind_start = blind_index * self.blind_size
+
+            # Determine the size of this particular blind
+            # Add 1 extra pixel to the first few blinds if there's a remainder
+            current_blind_size = self.blind_size
+            if blind_index < self.remainder:
+                current_blind_size += 1
+                # Adjust start position for blinds after the first few
+                if blind_index > 0:
+                    blind_start += min(blind_index, self.remainder)
+            elif self.remainder > 0:
+                blind_start += self.remainder
+
+            # Calculate how many pixels in this blind should be filled
+            pixels_to_fill = int(current_blind_size * progress)
+
+            # Fill pixels for this blind
+            for i in range(pixels_to_fill):
+                pixel_pos = blind_start + i
+                if pixel_pos < self.width:  # Safety check
+                    self.background[pixel_pos] = self.color
+
+        # Return True if still running, False if complete
+        return elapsed_time < self.duration
+
+
 # Foreground Effects
 
 class Pulse(ForegroundEffect):
