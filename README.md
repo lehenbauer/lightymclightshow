@@ -2,11 +2,24 @@
 
 # lightymclightshow
 
-This is python software to control as many WS2812B RGB LEDs as you can reasonably put on a Raspberry Pi.
+This is python software to control as many WS2812B RGB LED strips or equivalent as you can reasonably put on a Raspberry Pi.
 
-It uses the rpi_ws281x library to control the LEDs and gpsd to get GPS data.
+It uses the rpi_ws281x library to control the LEDs and gpsd to get GPS data for speed-aware lighting effects, etc.
 
-It has a dispatcher and a bunch of effects and many effects can be run simultaneously.
+It has a dispatcher class that an run many effects simultaneously.  
+
+## Effects
+
+effects are python objects that have a start and a step method and do things to the lights.  they have a duration in seconds and are thus frame rate independent.  when the dispatcher calls the step method, it passes the elapsed time in seconds since the start of the effect.  the effect can then calculate what pixels it needs to set based on that time.
+
+for example a fill effect that fills over 5 seconds would set half the pixels to the fill color at 2.5 seconds, all at 5 seconds.
+
+background effects operate on a background array of pixels that is the size of the strip, and they can set pixels to a color or leave them unchanged.  The dispatcher then takes the background array and sets the actual strip pixels to it when it calls the show method.
+
+foreground effects operate directly on the strip pixels and can set them to a color or leave them unchanged.  The dispatcher calls the show method on the strip after all foreground effects have been stepped.
+
+The step function returns True if there are more steps to follow and False if it has finished.
+
 
 Currently the action is in the gen2 directory.  Directories named "attic" contain old stuff and are unimportant.
 
@@ -45,19 +58,6 @@ GPIO 18 is the sixth one down from the top right and that's the goodie for now
 
 https://images.theengineeringprojects.com/image/webp/2021/03/raspberry-pi-4.png.webp?ssl=1
 
-sudo ./test --width 300 --height 1 --gpio 18
-
-is putting something on the scope
-
-https://www.amazon.com/dp/B07L3QD1LF?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
-
-python
-
-you need to be root
-
-python3 -m venv venv
-. venv/bin/activate
-
 ## if using SPI on Pi 4
 
 on pi 4 add to /boot/config.txt
@@ -68,6 +68,27 @@ core_freq_min=500
 ```
 
 to avoid the idle CPU scaling changing the SPI frequency and breaking the timings
+sudo ./test --width 300 --height 1 --gpio 18
+
+is putting something on the scope
+
+https://www.amazon.com/dp/B07L3QD1LF?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
+
+python
+
+you need to be root to have permission to access /dev/mem or something for PWM0
+
+## python virtual environment
+
+```
+python3 -m venv venv
+. venv/bin/activate
+```
+or 
+```
+sudo venv/bin/python demo2.py
+```
+
 
 ## flickering
 
