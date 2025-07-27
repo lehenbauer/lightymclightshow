@@ -3,6 +3,7 @@ import math
 import random
 from abc import ABC, abstractmethod
 from rpi_ws281x import Color
+from image_stuff import load_and_resize_image, get_row_pixels
 
 class Effect(ABC):
     """Base class for all effects."""
@@ -400,6 +401,80 @@ class VenetianBlinds(BackgroundEffect):
         return elapsed_time < self.duration
 
 
+class ImageBackground(BackgroundEffect):
+    """Play an image row by row into the background array."""
+
+    def __init__(self, strip, background, image_path):
+        """
+        Initialize the ImageBackground effect and load the image.
+
+        Args:
+            strip: The LED strip object
+            background: The background array
+            image_path (str): Path to the image file to load
+        """
+        super().__init__(strip, background)
+        self.image_path = image_path
+
+        # Load and resize the image to match strip width at instantiation time
+        self.pixel_array = load_and_resize_image(image_path, self.width)
+        self.image_height = self.pixel_array.shape[0]
+
+    def init(self, duration=10.0, loop=False):
+        """
+        Initialize the image background effect parameters.
+
+        Args:
+            duration (float): How long to play the entire image (in seconds)
+            loop (bool): Whether to loop the image playback
+        """
+        self.duration = duration
+        self.loop = loop
+
+        # Track the last row displayed to avoid redundant updates
+        self.last_row = -1
+
+        # Calculate time per row
+        self.time_per_row = self.duration / self.image_height if self.image_height > 0 else 0
+
+    def step(self, elapsed_time):
+        if self.image_height == 0:
+            return False
+
+        # Calculate which row should be displayed
+        if self.loop:
+            # For looping, use modulo to wrap around
+            total_progress = elapsed_time / self.time_per_row
+            current_row = int(total_progress) % self.image_height
+        else:
+            # For non-looping, clamp to image height
+            progress = min(elapsed_time / self.duration, 1.0)
+            current_row = min(int(progress * self.image_height), self.image_height - 1)
+
+        # Only update if we've moved to a new row
+        if current_row != self.last_row:
+            # Get the row colors
+            row_colors = get_row_pixels(self.pixel_array, current_row)
+
+            # Copy row colors to background, handling width mismatch
+            for i in range(min(len(row_colors), self.width)):
+                self.background[i] = row_colors[i]
+
+            # If the image is narrower than the strip, fill remaining pixels with black
+            if len(row_colors) < self.width:
+                black = Color(0, 0, 0)
+                for i in range(len(row_colors), self.width):
+                    self.background[i] = black
+
+            self.last_row = current_row
+
+        # Continue if looping or if we haven't finished the image
+        if self.loop:
+            return True
+        else:
+            return elapsed_time < self.duration
+
+
 # Foreground Effects
 
 class Pulse(ForegroundEffect):
@@ -602,9 +677,16 @@ dispatcher.run_foreground_effect(
     chase.start(r=255, g=0, b=0, speed=20.0)
 )
 
+# Run an image in the background
+image_bg = ImageBackground(strip, dispatcher.background)
+dispatcher.run_background_effect(
+    image_bg.start(image_path='path/to/image.jpg', duration=5.0, loop=True)
+)
+
 # Run the animation
 dispatcher.run()  # Runs until all effects complete
 
 # To stop a continuous effect manually:
 dispatcher.stop_foreground_effect(chase)
+dispatcher.stop_background_effect(image_bg)
 """

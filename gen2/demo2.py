@@ -16,6 +16,12 @@ def run_demo():
     # Create dispatcher
     dispatcher = Dispatcher(strip)
 
+    # Run an image in the background
+    image_bg = ImageBackground(strip, dispatcher.background, '../sym2/symmetry_4b3f847e9b02d_hires.jpg')
+    dispatcher.run_background_effect(
+        image_bg.start(duration=5.0)
+    )
+
     # Add a background wipe - green (1 second duration)
     wipe = WipeLowHigh(strip, dispatcher.background)
     dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=3.0))
