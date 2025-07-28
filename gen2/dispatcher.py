@@ -473,6 +473,26 @@ class VenetianBlinds(BackgroundEffect):
         # Return True if still running, False if complete
         return elapsed_time < self.duration
 
+class Pulsator(BackgroundEffect):
+    """ pulse in and out according to a sine wave that we use for V of the HSV color space. """
+
+    def init(self, h=0.0, s=1.0, max_v=0.5, pulses=5, duration=10.0):
+        self.duration = duration
+        self.max_v = max_v
+        self.pulses = pulses
+        self.h = h
+        self.s = s
+
+    def step(self, elapsed_time):
+        # Calculate the sine wave HSV V value for each pixel
+        for i in range(self.width):
+            t = (i / self.width) * self.pulses * 2 * math.pi
+            v = self.max_v * abs(math.sin(t))
+            r, g, b = self.hsv_to_rgb(self.h, self.s, v)
+            self.background[i] = Color(r, g, b)
+
+        return elapsed_time < self.duration
+
 
 class ImageBackground(BackgroundEffect):
     """Play an image row by row into the background array."""
