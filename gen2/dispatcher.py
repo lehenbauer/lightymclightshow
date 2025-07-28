@@ -476,11 +476,12 @@ class VenetianBlinds(BackgroundEffect):
 class Pulsator(BackgroundEffect):
     """ pulse in and out according to a sine wave that we use for V of the HSV color space. """
 
-    def init(self, h=0.5, s=1.0, max_v=0.5, pulses=5, pulse_nodes=3, duration=10.0):
+    def init(self, h=0.5, s=1.0, max_v=0.5, pulses=5, pulse_nodes=3, threshold=0.2, duration=10.0):
         self.duration = duration
         self.max_v = max_v
         self.pulses = pulses
         self.pulse_nodes = pulse_nodes  # Number of nodes in the strip sine wave
+        self.threshold = threshold
         self.h = h
         self.s = s
 
@@ -495,9 +496,8 @@ class Pulsator(BackgroundEffect):
         v_mul = abs(math.sin(ratio * self.pulses * math.pi))
         for i in range(self.width):
             t = (i / self.width) * self.pulse_nodes * 2 * math.pi
-            v = self.max_v * v_mul * abs(math.sin(t))
+            v = max(0.0, self.max_v * v_mul * abs(math.sin(t)) - self.threshold)
             r, g, b = self.hsv_to_rgb(self.h, self.s, v)
-            print(f'i: {i}, t: {t:2f}, v_mul: {v_mul:2f}, v: {v:2f}, r: {r}, g: {g}, b: {b}')  # Debugging output
             self.background[i] = Color(r, g, b)
 
         return elapsed_time < self.duration
