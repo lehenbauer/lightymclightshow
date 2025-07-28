@@ -1,9 +1,16 @@
 import time
 import math
 import random
+import heapq
 from abc import ABC, abstractmethod
 from rpi_ws281x import Color
 from image_stuff import load_and_resize_image, get_row_pixels, list_image_files
+
+
+class Timeline:
+    """A simple container to hold references to effects for scheduling."""
+    pass
+
 
 class Effect(ABC):
     """Base class for all effects."""
@@ -128,6 +135,53 @@ class ForegroundEffect(Effect):
     pass
 
 
+class Chain(Effect):
+    """An effect that runs a sequence of other effects."""
+
+    def __init__(self, strip, effects):
+        super().__init__(strip)
+        self.effects = list(effects)  # Make a copy
+        self.current_effect = None
+
+    def init(self):
+        # The start method of the chain doesn't need extra params,
+        # but the effects within it do.
+        pass
+
+    def start(self):
+        """Starts the chain."""
+        super().start()
+        self._run_next_effect()
+        return self
+
+    def _run_next_effect(self):
+        """Runs the next effect in the chain."""
+        if self.effects:
+            self.current_effect = self.effects.pop(0)
+            # The "effects" in the list are actually pre-configured start calls
+            # e.g. lambda: some_effect.start(duration=2.0)
+            self.current_effect()
+        else:
+            self.current_effect = None
+
+    def step(self, elapsed_time):
+        """
+        The chain's step is a bit different. It just needs to know when the
+        entire sequence is done. It relies on the dispatcher to step the
+        actual active effect. The chain is "done" when there are no more
+        effects to run and the current one is no longer in the dispatcher's
+        active list.
+        """
+        if self.current_effect:
+            # Check if the current effect has finished
+            if self.current_effect not in self.dispatcher.background_effects and \
+               self.current_effect not in self.dispatcher.foreground_effects:
+                self._run_next_effect()
+
+        # The chain is active as long as it has a current effect or more to run
+        return self.current_effect is not None
+
+
 class Dispatcher:
     """Manages the animation loop for effects across multiple strips."""
 
@@ -141,6 +195,19 @@ class Dispatcher:
 
         # Timing
         self.frame_count = 0
+        self.start_time = None
+        self.event_queue = []
+        self.schedule_count = 0
+
+    def schedule(self, fire_time, action):
+        """
+        Schedule an action to run at a specific time.
+        fire_time: virtual time in seconds to run the action.
+        action: A callable (e.g., a function or lambda) to execute.
+        """
+        entry = (fire_time, self.schedule_count, action)
+        heapq.heappush(self.event_queue, entry)
+        self.schedule_count += 1
 
     def run_background_effect(self, effect):
         """Add a background effect to the active list."""
@@ -218,16 +285,25 @@ class Dispatcher:
         Run the animation loop.
         duration: Run for this many seconds, or forever if None
         """
-        start_time = time.time()
+        self.start_time = time.time()
 
         while True:
+            # Process event queue
+            virtual_now = time.time() - self.start_time
+            while self.event_queue and self.event_queue[0][0] <= virtual_now:
+                _, _, action = heapq.heappop(self.event_queue)
+                try:
+                    action()
+                except Exception as e:
+                    print(f"Error executing scheduled action: {action}\n{e}")
+
             self.run_frame()
 
-            if duration and (time.time() - start_time) >= duration:
+            if duration and (time.time() - self.start_time) >= duration:
                 break
 
-            # Break if no active effects
-            if not self.background_effects and not self.foreground_effects:
+            # Break if no active effects and no pending events
+            if not self.background_effects and not self.foreground_effects and not self.event_queue:
                 break
 
 
@@ -480,8 +556,8 @@ class Pulse(ForegroundEffect):
     color before fading out.
     """
 
-    def init(self, center=None, r=0, g=0, b=255,
-             explode_r=255, explode_g=255, explode_b=255,
+    def init(self, center=None, h=0.0, s=1.0, v=1.0,
+             explode_h=0.0, explode_s=0.0, explode_v=1.0,
              duration=1.5, max_width=None):
 
         if center is None:
@@ -490,30 +566,40 @@ class Pulse(ForegroundEffect):
             max_width = self.width
 
         self.center = center
+        r, g, b = self.hsv_to_rgb(h, s, v)
         self.base_color = Color(r, g, b)
+        explode_r, explode_g, explode_b = self.hsv_to_rgb(explode_h, explode_s, explode_v)
         self.explode_color = Color(explode_r, explode_g, explode_b)
         self.duration = duration
         self.max_width = max_width
 
+    def ease_out_cubic(self, t):
+        """Easing function for a natural deceleration."""
+        return 1 - pow(1 - t, 3)
+
     def ease_out_quart(self, t):
         """Easing function for a natural deceleration."""
         return 1 - pow(1 - t, 4)
+
+    def ease_out_quint(self, t):
+        """Easing function for a natural deceleration."""
+        return 1 - pow(1 - t, 5)
 
     def step(self, elapsed_time):
         # Normalize time from 0 to 1
         progress = min(elapsed_time / self.duration, 1.0)
 
         # Use easing function to control expansion
-        eased_progress = self.ease_out_quart(progress)
+        eased_progress = self.ease_out_quint(progress)
 
         # --- Width Calculation ---
         # The pulse expands to its maximum width based on the eased progress.
         current_width = self.max_width * eased_progress
 
         # --- Color and Brightness Calculation ---
-        # The color interpolates towards the explode_color as it expands.
+        # The color interpolates from explode_color to base_color  it expands.
         # The brightness peaks mid-way and then fades to black.
-        color = Effect.interpolate_color(self.base_color, self.explode_color, eased_progress)
+        color = Effect.interpolate_color(self.explode_color, self.base_color, eased_progress)
 
         # Brightness fades out over the second half of the duration
         brightness = 1.0

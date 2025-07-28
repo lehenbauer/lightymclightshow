@@ -31,4 +31,15 @@ is there a way for the effect to think it's doing a sleep and stuff so it doesn'
 
 
 
+------
+
+there needs to be an orchestrator that kicks off effects at points in time
+
+it's a dispatcher that will execute code at points in time according to its schedule
+
+it also shouild be able to do something like chain effects (the completion of one effect starts another) and wait for an effect to complete
+
+
+
+
 

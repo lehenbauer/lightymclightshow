@@ -15,101 +15,94 @@ strip = Strip(physical_strip)
 def run_demo(strip):
     """Run the LED demo sequence."""
 
-    # Create dispatcher
+    # Create dispatcher and a timeline to hold our effect instances
     dispatcher = Dispatcher()
+    timeline = Timeline()
 
-    # Run an image in the background
-    #FILE = '../symmetric/nEeMBfm.png'
-    #FILE = '../sym2/Symmetry-random-26673990-400-320.jpg'
-    FILE = '../images/custom/circles1.png'
-    # FILE ='../sym2/symmetry_4b3f847e9b02d_hires.jpg'
-    image_bg = ImageBackground(strip, FILE)
-    print("image")
-    dispatcher.run_background_effect(
-        image_bg.start(duration=20.0)
-    )
+    # --- Instantiate all effects and store them on the timeline ---
+    timeline.image_bg = ImageBackground(strip, '../images/custom/circles1.png')
+    timeline.wipe1 = WipeLowHigh(strip)
+    timeline.wipe2 = WipeInsideOut(strip)
+    timeline.wipe3 = WipeOutsideIn(strip)
+    timeline.fade = FadeBackground(strip)
+    timeline.venetian_blinds = VenetianBlinds(strip)
+    timeline.pulse = Pulse(strip)
+    timeline.sparkle = Sparkle(strip)
+    timeline.chase1 = Chase(strip)
+    timeline.chase2 = Chase(strip)
+
+    # --- Schedule all actions ---
+
+    # 0.0s: Start a 20s image background. It will be progressively overwritten by the wipes.
+    dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(
+        timeline.image_bg.start(duration=20.0)
+    ))
+
+    # 0.0s: A chain of wipes, each 3s long
+    wipe_chain = Chain(strip, [
+        lambda: dispatcher.run_background_effect(timeline.wipe1.start(r=0, g=20, b=0, duration=3.0)),
+        lambda: dispatcher.run_background_effect(timeline.wipe2.start(r=30, g=20, b=50, duration=3.0)),
+        lambda: dispatcher.run_background_effect(timeline.wipe3.start(r=0, g=20, b=100, duration=3.0)),
+        lambda: dispatcher.run_background_effect(timeline.fade.start(r=20, g=0, b=20, duration=3.0)),
+    ])
+    # The Chain effect itself needs to be passed to the dispatcher so it can be tracked.
+    # We pass the Chain's start method as the scheduled action.
+    wipe_chain.dispatcher = dispatcher
+    dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(wipe_chain.start()))
+
+
+    # 12.5s: Venetian blinds
+    dispatcher.schedule(12.5, lambda: dispatcher.run_background_effect(
+        timeline.venetian_blinds.start(r=0, g=0, b=0, num_blinds=10, duration=1.5)
+    ))
+
+    # 14.0s: Blackout before pulses
+    dispatcher.schedule(14.0, lambda: strip.blackout())
+
+    # 14.5s: First pulse
+    dispatcher.schedule(14.5, lambda: dispatcher.run_foreground_effect(
+        timeline.pulse.start(center=125, h=0.66, s=1.0, v=1.0, explode_v=1.0, duration=2.0, max_width=50)
+    ))
+
+    # 17.0s: Blackout
+    dispatcher.schedule(17.0, lambda: strip.blackout())
+
+    # 17.5s: Second pulse
+    dispatcher.schedule(17.5, lambda: dispatcher.run_foreground_effect(
+        timeline.pulse.start(center=225, h=0.33, s=1.0, v=1.0, explode_v=1.0, duration=2.0, max_width=25)
+    ))
+
+    # 20.0s: Blackout
+    dispatcher.schedule(20.0, lambda: strip.blackout())
+
+    # 20.5s: Sparkles for 5 seconds
+    dispatcher.schedule(20.5, lambda: dispatcher.run_foreground_effect(
+        timeline.sparkle.start(r=255, g=255, b=255, density=0.05, duration=5.0)
+    ))
+
+    # 26.0s: Blackout
+    dispatcher.schedule(26.0, lambda: strip.blackout())
+
+    # 26.5s: Two chases and sparkles running together for 10s
+    dispatcher.schedule(26.5, lambda: dispatcher.run_foreground_effect(
+        timeline.chase1.start(r=50, g=0, b=0, speed=50.0, dot_width=10, duration=10)
+    ))
+    dispatcher.schedule(26.5, lambda: dispatcher.run_foreground_effect(
+        timeline.chase2.start(r=0, g=0, b=50, speed=25.0, dot_width=20, duration=10)
+    ))
+    dispatcher.schedule(26.5, lambda: dispatcher.run_foreground_effect(
+        timeline.sparkle.start(r=255, g=255, b=255, density=0.05, duration=10.0)
+    ))
+
+    # 37.0s: Final blackout
+    dispatcher.schedule(37.0, lambda: strip.blackout())
+
+    # --- Run the animation ---
+    # The dispatcher will now run until all scheduled events and effects are complete.
     dispatcher.run()
 
-    # Add a background wipe - green (1 second duration)
-    wipe = WipeLowHigh(strip)
-    dispatcher.run_background_effect(wipe.start(r=0, g=20, b=0, duration=3.0))
-
-    dispatcher.run()
-
-    print("wipes")
-    inside_out_wipe = WipeInsideOut(strip)
-    dispatcher.run_background_effect(inside_out_wipe.start(r=30, g=20, b=50, duration=3.0))
-
-    dispatcher.run()
-
-    outside_in_wipe = WipeOutsideIn(strip)
-    dispatcher.run_background_effect(outside_in_wipe.start(r=0, g=20, b=100, duration=3.0))
-
-    dispatcher.run()
-
-    venetian_blinds = VenetianBlinds(strip)
-    dispatcher.run_background_effect(venetian_blinds.start(r=0, g=0, b=0, num_blinds=10, duration=1.5))
-
-    dispatcher.run()
-
-    # Add a fade after the wipe - to purple
-    fade = FadeBackground(strip)
-    dispatcher.run_background_effect(fade.start(r=20, g=0, b=20, duration=3.0))
-
-    dispatcher.run()
-
+    print("Demo complete.")
     strip.blackout()
-
-    # Add a foreground pulse - blue to white
-    print("pulse")
-    pulse = Pulse(strip)
-    dispatcher.run_foreground_effect(
-        pulse.start(center=125, r=0, g=0, b=100, explode_r=255, explode_g=255, explode_b=255, duration=2.0, max_width=50)
-    )
-    dispatcher.run()
-
-    dispatcher.run_foreground_effect(
-        pulse.start(center=225, r=0, g=100, b=0, explode_r=255, explode_g=255, explode_b=255, duration=2.0, max_width=25)
-    )
-    dispatcher.run()
-
-    strip.blackout()
-
-    # Add sparkles that run for 5 seconds
-    sparkle = Sparkle(strip)
-    dispatcher.run_foreground_effect(
-        sparkle.start(r=255, g=255, b=255, density=0.05, duration=5.0)
-    )
-
-    dispatcher.run()
-
-    strip.blackout()
-
-    # Add a continuous chase effect - red at 50 pixels/second
-    chase = Chase(strip)
-    dispatcher.run_foreground_effect(
-        chase.start(r=50, g=0, b=0, speed=50.0, dot_width=10, duration=10)
-    )
-
-    # and a continuous chase effect blue at 25 pixels/sec
-    chase2 = Chase(strip)
-    dispatcher.run_foreground_effect(
-        chase2.start(r=0, g=0, b=50, speed=25.0, dot_width=20, duration=10)
-    )
-
-    # and bring sparkle back
-    dispatcher.run_foreground_effect(
-        sparkle.start(r=255, g=255, b=255, density=0.05, duration=10.0)
-    )
-
-    strip.blackout()
-    # Run the animation
-    dispatcher.run()  # Runs until all effects complete
-
-    strip.blackout()
-
-    # To stop a continuous effect manually:
-    #dispatcher.stop_foreground_effect(chase)
 
 
 if __name__ == "__main__":
