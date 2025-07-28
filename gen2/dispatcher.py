@@ -521,7 +521,7 @@ class Pulsator(BackgroundEffect):
         return elapsed_time < self.duration
 
 class SimplePulsator(BackgroundEffect):
-    def init(self, min_node_width_pct=5, max_node_width_pct=10, n_nodes=3, node_pulses=5, low_h=0.7, high_h=0.7, s=1.0, min_v=0.1, max_v=1.0, duration=10):
+    def init(self, min_node_width_pct=5, max_node_width_pct=10, n_nodes=3, node_pulses=5, low_h=0.7, high_h=0.7, s=1.0, min_v=0.1, max_v=1.0, duration=10, speed=0):
         self.duration = duration
         self.min_node_width_pct = min_node_width_pct / 100.0  # Convert to fractional percentage
         self.max_node_width_pct = max_node_width_pct / 100.0  # ditto
@@ -532,6 +532,7 @@ class SimplePulsator(BackgroundEffect):
         self.s = s
         self.min_v = min_v
         self.max_v = max_v
+        self.speed = speed
 
     def step(self, elapsed_time):
         # Overall progress for pulsing effect
@@ -550,6 +551,10 @@ class SimplePulsator(BackgroundEffect):
         r, g, b = self.hsv_to_rgb(h, self.s, v)
         color = Color(r, g, b)
 
+        # Calculate the movement shift
+        speed_pixels_per_sec = self.speed / 100.0 * self.width
+        shift = speed_pixels_per_sec * elapsed_time
+
         # Determine the spacing and start of the first node
         if self.n_nodes > 0:
             spacing = self.width / self.n_nodes
@@ -564,11 +569,14 @@ class SimplePulsator(BackgroundEffect):
 
         # Draw the nodes
         for i in range(self.n_nodes):
-            node_start = int(i * spacing + start_offset)
-            node_end = int(node_start + node_width_pixels)
-            for p in range(node_start, node_end):
-                if 0 <= p < self.width:
-                    self.background[p] = color
+            node_start_unwrapped = i * spacing + start_offset + shift
+            node_end_unwrapped = node_start_unwrapped + node_width_pixels
+
+            # Handle wrapping for wider nodes
+            # We draw segments of the node if it wraps around the strip
+            for p_offset in range(int(node_width_pixels) + 1):
+                p = int(node_start_unwrapped + p_offset) % self.width
+                self.background[p] = color
 
         return elapsed_time < self.duration
 
