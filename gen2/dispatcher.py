@@ -492,12 +492,12 @@ class Pulsator(BackgroundEffect):
         # there are two kinds of pulses, the overall ramping of v
         # and the number within the strip
         ratio = elapsed_time / self.duration
-        v_mul = abs(math.sin(ratio * self.pulses * 2 * math.pi))
+        v_mul = abs(math.sin(ratio * self.pulses * math.pi))
         for i in range(self.width):
             t = (i / self.width) * self.pulse_nodes * 2 * math.pi
             v = self.max_v * v_mul * abs(math.sin(t))
             r, g, b = self.hsv_to_rgb(self.h, self.s, v)
-            print(f'i: {i}, t: {t}, v: {v}, r: {r}, g: {g}, b: {b}')  # Debugging output
+            print(f'i: {i}, t: {t:2f}, v_mul: {v_mul:2f}, v: {v:2f}, r: {r}, g: {g}, b: {b}')  # Debugging output
             self.background[i] = Color(r, g, b)
 
         return elapsed_time < self.duration
