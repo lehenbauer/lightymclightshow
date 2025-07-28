@@ -1011,19 +1011,17 @@ class GravityFill(BackgroundEffect):
         # 1. Launch new raindrops if it's time
         if now >= self.next_launch_time and self.pixels_filled < self.width:
             target_y = self.width - self.pixels_filled - 1
-            # Only launch if there's space for another drop to fall into
-            if not any(d.target_y == target_y for d in self.active_raindrops):
-                initial_velocity = random.uniform(self.min_initial_velocity, self.max_initial_velocity)
-                drop = _Raindrop(initial_velocity, target_y)
-                self.active_raindrops.append(drop)
+            initial_velocity = random.uniform(self.min_initial_velocity, self.max_initial_velocity)
+            drop = _Raindrop(initial_velocity, target_y)
+            self.active_raindrops.append(drop)
 
-                # Schedule the next launch
-                launch_rate = random.uniform(self.min_launch_rate, self.max_launch_rate)
-                if launch_rate > 0:
-                    self.next_launch_time = now + (1.0 / launch_rate)
-                else:
-                    # Avoid division by zero, wait a bit
-                    self.next_launch_time = now + 0.1
+            # Schedule the next launch
+            launch_rate = random.uniform(self.min_launch_rate, self.max_launch_rate)
+            if launch_rate > 0:
+                self.next_launch_time = now + (1.0 / launch_rate)
+            else:
+                # Avoid division by zero, wait a bit
+                self.next_launch_time = now + 0.1
 
         # 2. Clear the background to black
         for i in range(self.width):
