@@ -19,6 +19,7 @@ class Effect(ABC):
         self.strip = strip
         self.width = strip.width
         self.pause_until = 0
+        self.pause_started_at = 0
 
     def start(self, **kwargs):
         """Start the effect with given parameters."""
@@ -32,8 +33,9 @@ class Effect(ABC):
         The dispatcher will not step this effect until the pause is over.
         The effect's elapsed time will not advance during the pause.
         """
-        self.pause_until = time.time() + duration
-        self.start_time += duration
+        now = time.time()
+        self.pause_until = now + duration
+        self.pause_started_at = now
 
     @abstractmethod
     def init(self, **kwargs):
@@ -250,9 +252,16 @@ class Dispatcher:
         # Step all background effects and remove completed ones
         completed = []
         for effect in self.background_effects:
+            if effect.pause_started_at > 0 and now >= effect.pause_until:
+                # Pause is over, correct the start time
+                actual_pause_duration = now - effect.pause_started_at
+                effect.start_time += actual_pause_duration
+                effect.pause_started_at = 0
+
             if now < effect.pause_until:
                 strips_to_update.add(effect.strip)
                 continue
+
             elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
@@ -275,8 +284,15 @@ class Dispatcher:
                 effect.strip.copy_color_to_strip()
                 strips_to_update.add(effect.strip)
 
+            if effect.pause_started_at > 0 and now >= effect.pause_until:
+                # Pause is over, correct the start time
+                actual_pause_duration = now - effect.pause_started_at
+                effect.start_time += actual_pause_duration
+                effect.pause_started_at = 0
+
             if now < effect.pause_until:
                 continue
+
             elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
