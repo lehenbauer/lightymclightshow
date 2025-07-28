@@ -18,12 +18,22 @@ class Effect(ABC):
     def __init__(self, strip):
         self.strip = strip
         self.width = strip.width
+        self.pause_until = 0
 
     def start(self, **kwargs):
         """Start the effect with given parameters."""
         self.start_time = time.time()
         self.init(**kwargs)
         return self
+
+    def request_pause(self, duration):
+        """
+        Request a pause for this effect.
+        The dispatcher will not step this effect until the pause is over.
+        The effect's elapsed time will not advance during the pause.
+        """
+        self.pause_until = time.time() + duration
+        self.start_time += duration
 
     @abstractmethod
     def init(self, **kwargs):
@@ -232,6 +242,7 @@ class Dispatcher:
     def run_frame(self):
         """Process one frame of animation."""
         frame_start = time.time()
+        now = time.time()
 
         # Group effects by strip for efficient processing
         strips_to_update = set()
@@ -239,7 +250,10 @@ class Dispatcher:
         # Step all background effects and remove completed ones
         completed = []
         for effect in self.background_effects:
-            elapsed = time.time() - effect.start_time
+            if now < effect.pause_until:
+                strips_to_update.add(effect.strip)
+                continue
+            elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
             else:
@@ -261,7 +275,9 @@ class Dispatcher:
                 effect.strip.copy_color_to_strip()
                 strips_to_update.add(effect.strip)
 
-            elapsed = time.time() - effect.start_time
+            if now < effect.pause_until:
+                continue
+            elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
 
@@ -842,13 +858,15 @@ class Chase(ForegroundEffect):
 
 class BlockFill(BackgroundEffect):
     """
-    Fills the strip by animating blocks into place one by one from left to right.
+    Fills the strip by animating blocks into place one by one from right to left.
+    Includes a pause before each block animation.
     """
 
-    def init(self, r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=100.0):
+    def init(self, r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=100.0, pause=0.2):
         self.color = Color(r, g, b)
         self.block_width_pct = block_width_pct / 100.0
         self.outline_pct = outline_pct / 100.0
+        self.pause_duration = pause
 
         # Speed in pixels per second for the animation
         self.speed_pps = (speed_pct_per_sec / 100.0) * self.width
@@ -865,8 +883,12 @@ class BlockFill(BackgroundEffect):
 
         # Animation state
         self.current_block_index = 0
-        self.block_start_time = self.start_time
+        self.block_animation_start_time = 0
         self._calculate_current_block_duration()
+
+        # Start with a pause
+        self.request_pause(self.pause_duration)
+
 
     def _calculate_current_block_duration(self):
         """Calculates the animation duration for the current block based on speed."""
@@ -875,24 +897,27 @@ class BlockFill(BackgroundEffect):
             return
 
         # The block's final destination (left edge), calculated from the right.
-        distance_to_travel = self.width - (self.current_block_index + 1) * self.total_block_width
-        distance_to_travel = max(0, distance_to_travel)
+        # The animation starts from the far left (pixel 0).
+        target_start_pos = self.width - (self.current_block_index + 1) * self.total_block_width
+        distance_to_travel = max(0, target_start_pos)
 
         if self.speed_pps > 0:
             self.current_block_duration = distance_to_travel / self.speed_pps
         else:
             self.current_block_duration = 0  # Appears instantly if no speed
 
+        # This marks the beginning of the animation for the current block,
+        # relative to the effect's total elapsed time.
+        self.block_animation_start_time = time.time() - self.start_time
+
+
     def step(self, elapsed_time):
         if self.current_block_index >= self.num_blocks:
             return False  # Effect is complete
 
         # --- Animation Progress ---
-        elapsed_for_block = time.time() - self.block_start_time
-        if self.current_block_duration > 0:
-            progress = min(elapsed_for_block / self.current_block_duration, 1.0)
-        else:
-            progress = 1.0
+        elapsed_for_block = elapsed_time - self.block_animation_start_time
+        progress = min(elapsed_for_block / self.current_block_duration, 1.0) if self.current_block_duration > 0 else 1.0
 
         # --- Drawing ---
         # Clear the entire background for this frame
@@ -908,7 +933,6 @@ class BlockFill(BackgroundEffect):
                     self.background[p] = self.color
 
         # Draw the currently animating block
-        # It animates from the left edge (0) to its target position
         target_start_pos = self.width - (self.current_block_index + 1) * self.total_block_width
         current_start_pos = int(max(0, target_start_pos) * progress)
         for p_offset in range(self.block_width_pixels):
@@ -918,10 +942,15 @@ class BlockFill(BackgroundEffect):
 
         # --- State Update ---
         if progress >= 1.0:
-            # The block is now settled. Increment index and reset timer for the next block.
+            # The block is now settled. Increment index for the next block.
             self.current_block_index += 1
-            self.block_start_time = time.time()
-            self._calculate_current_block_duration()
+
+            # Request a pause before the next block (or before finishing)
+            self.request_pause(self.pause_duration)
+
+            # If there are more blocks, calculate the next duration
+            if self.current_block_index < self.num_blocks:
+                self._calculate_current_block_duration()
 
         return True
 
