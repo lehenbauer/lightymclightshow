@@ -840,6 +840,91 @@ class Chase(ForegroundEffect):
         # If no duration, run continuously
         return True
 
+class BlockFill(BackgroundEffect):
+    """
+    Fills the strip by animating blocks into place one by one from left to right.
+    """
+
+    def init(self, r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=100.0):
+        self.color = Color(r, g, b)
+        self.block_width_pct = block_width_pct / 100.0
+        self.outline_pct = outline_pct / 100.0
+
+        # Speed in pixels per second for the animation
+        self.speed_pps = (speed_pct_per_sec / 100.0) * self.width
+
+        # Calculate dimensions in pixels
+        self.block_width_pixels = int(self.block_width_pct * self.width)
+        self.outline_pixels = int(self.outline_pct * self.width)
+        self.total_block_width = self.block_width_pixels + self.outline_pixels
+
+        if self.total_block_width <= 0:
+            self.num_blocks = 0
+        else:
+            self.num_blocks = math.ceil(self.width / self.total_block_width)
+
+        # Animation state
+        self.current_block_index = 0
+        self.block_start_time = self.start_time
+        self._calculate_current_block_duration()
+
+    def _calculate_current_block_duration(self):
+        """Calculates the animation duration for the current block based on speed."""
+        if self.current_block_index >= self.num_blocks:
+            self.current_block_duration = 0
+            return
+
+        # The block's final destination (left edge), calculated from the right.
+        distance_to_travel = self.width - (self.current_block_index + 1) * self.total_block_width
+        distance_to_travel = max(0, distance_to_travel)
+
+        if self.speed_pps > 0:
+            self.current_block_duration = distance_to_travel / self.speed_pps
+        else:
+            self.current_block_duration = 0  # Appears instantly if no speed
+
+    def step(self, elapsed_time):
+        if self.current_block_index >= self.num_blocks:
+            return False  # Effect is complete
+
+        # --- Animation Progress ---
+        elapsed_for_block = time.time() - self.block_start_time
+        if self.current_block_duration > 0:
+            progress = min(elapsed_for_block / self.current_block_duration, 1.0)
+        else:
+            progress = 1.0
+
+        # --- Drawing ---
+        # Clear the entire background for this frame
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+        # Redraw all settled blocks at their final positions (from the right)
+        for i in range(self.current_block_index):
+            start_pos = self.width - (i + 1) * self.total_block_width
+            for p_offset in range(self.block_width_pixels):
+                p = start_pos + p_offset
+                if 0 <= p < self.width:
+                    self.background[p] = self.color
+
+        # Draw the currently animating block
+        # It animates from the left edge (0) to its target position
+        target_start_pos = self.width - (self.current_block_index + 1) * self.total_block_width
+        current_start_pos = int(max(0, target_start_pos) * progress)
+        for p_offset in range(self.block_width_pixels):
+            p = current_start_pos + p_offset
+            if 0 <= p < self.width:
+                self.background[p] = self.color
+
+        # --- State Update ---
+        if progress >= 1.0:
+            # The block is now settled. Increment index and reset timer for the next block.
+            self.current_block_index += 1
+            self.block_start_time = time.time()
+            self._calculate_current_block_duration()
+
+        return True
+
 
 # Example usage
 """
