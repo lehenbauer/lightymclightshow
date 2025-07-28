@@ -481,8 +481,10 @@ class Pulsator(BackgroundEffect):
         max_v is a multiplier for the V value of the HSV color space
         pulses is the number of full sine wave cycles to complete in the duration
         pulse_nodes is the number of nodes in the strip sine wave, i.e. how many spikes in the strip
-        offset is a constant offset added to the V value to shift V up if desired.  it is clamped to
-        0 to 1 but if you want more LEDs lit at the bottom of the trough, set this higher
+        offset is a constant offset added to the v_mul value to shift V up if desired.  if set to 0.2
+        for instance it will make sure that the max_v multiplier based on elapsed time and
+        nuimber of pulses will never be less than 0.2, so it won't go to zero.  it is ultimately clamped to
+        0 to 1 but if you want more LEDs lit at the bottom of the trough, set this higher.
         threshold is a value that is subtracted from the V value to create a dead zone at the bottom of the trough
         because if the result is < 0 it is clamed to 0.
     """
@@ -505,13 +507,16 @@ class Pulsator(BackgroundEffect):
         # there are two kinds of pulses, the overall ramping of v
         # and the number within the strip
         ratio = elapsed_time / self.duration
-        v_mul = abs(math.sin(ratio * self.pulses * math.pi))
+        v_mul = abs(math.sin(ratio * self.pulses * math.pi)) + self.offset
         for i in range(self.width):
             t = (i / self.width) * self.pulse_nodes * math.pi
             abs_sin_t = abs(math.sin(t))
-            v = min(1.0, max(0.0, self.max_v * v_mul * abs_sin_t - self.threshold + self.offset))
-            r, g, b = self.hsv_to_rgb(self.h, self.s, v)
-            self.background[i] = Color(r, g, b)
+            v = min(1.0, max(0.0, self.max_v * v_mul * abs_sin_t))
+            if v < self.threshold:
+                self.background[i] = 0
+            else:
+                r, g, b = self.hsv_to_rgb(self.h, self.s, v)
+                self.background[i] = Color(r, g, b)
 
         return elapsed_time < self.duration
 
