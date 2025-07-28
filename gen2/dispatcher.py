@@ -971,6 +971,91 @@ class BlockFill(BackgroundEffect):
         return True
 
 
+# Helper class for the GravityFill effect
+class _Raindrop:
+    def __init__(self, initial_velocity, target_y):
+        self.start_time = time.time()
+        self.initial_velocity = initial_velocity
+        self.target_y = target_y
+
+
+class GravityFill(BackgroundEffect):
+    """
+    Fills the strip with pixels that fall from the top with simulated gravity.
+    """
+
+    def init(self, color=Color(0, 0, 255), min_launch_rate=5.0, max_launch_rate=15.0,
+             min_initial_velocity=10.0, max_initial_velocity=30.0, acceleration=50.0):
+        self.color = color
+        self.min_launch_rate = min_launch_rate
+        self.max_launch_rate = max_launch_rate
+        self.min_initial_velocity = min_initial_velocity
+        self.max_initial_velocity = max_initial_velocity
+        self.acceleration = acceleration
+
+        # Animation state
+        self.active_raindrops = []
+        self.pixels_filled = 0
+        self.next_launch_time = 0.0
+
+        # Clear the background initially
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+    def step(self, elapsed_time):
+        if self.pixels_filled >= self.width and not self.active_raindrops:
+            return False  # Effect is complete
+
+        now = time.time()
+
+        # 1. Launch new raindrops if it's time
+        if now >= self.next_launch_time and self.pixels_filled < self.width:
+            target_y = self.width - self.pixels_filled - 1
+            # Only launch if there's space for another drop to fall into
+            if not any(d.target_y == target_y for d in self.active_raindrops):
+                initial_velocity = random.uniform(self.min_initial_velocity, self.max_initial_velocity)
+                drop = _Raindrop(initial_velocity, target_y)
+                self.active_raindrops.append(drop)
+
+                # Schedule the next launch
+                launch_rate = random.uniform(self.min_launch_rate, self.max_launch_rate)
+                if launch_rate > 0:
+                    self.next_launch_time = now + (1.0 / launch_rate)
+                else:
+                    # Avoid division by zero, wait a bit
+                    self.next_launch_time = now + 0.1
+
+        # 2. Clear the background to black
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+        # 3. Redraw all settled pixels
+        for i in range(self.pixels_filled):
+            self.background[self.width - 1 - i] = self.color
+
+        # 4. Update and draw active raindrops
+        still_falling = []
+        newly_landed = 0
+        for drop in self.active_raindrops:
+            time_since_launch = now - drop.start_time
+            # Physics: pos = v_initial * t + 0.5 * a * t^2
+            pos = (drop.initial_velocity * time_since_launch) + (0.5 * self.acceleration * time_since_launch**2)
+
+            if pos >= drop.target_y:
+                newly_landed += 1
+            else:
+                # Still falling, draw it at its current position
+                pixel_pos = int(pos)
+                if 0 <= pixel_pos < self.width:
+                    self.background[pixel_pos] = self.color
+                still_falling.append(drop)
+
+        self.active_raindrops = still_falling
+        self.pixels_filled += newly_landed
+
+        return True
+
+
 # Example usage
 """
 # Create physical strip and wrap it
