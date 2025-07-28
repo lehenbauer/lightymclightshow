@@ -21,13 +21,13 @@ def run_demo(strip):
     timeline = Timeline()
 
     # --- Instantiate all effects and store them on the timeline ---
-    timeline.pulsator = Pulsator(strip)
+    timeline.pulsator = SimplePulsator(strip)
 
     # --- Schedule all actions ---
 
     # 0.0s: Start the pulsator effect
     dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(
-        timeline.pulsator.start(h=0.7, s=1.0, max_v=0.6, offset=0.3, pulses=5, pulse_nodes=3, duration=10.0, threshold=0.2)
+        timeline.pulsator.start(min_node_width_pct=5, max_node_width_pct=20, n_nodes=3, node_pulses=5, low_h=0.5, high_h=0.6, s=1.0, min_v=0.01, max_v=0.5, duration=10)
     ))
 
     # --- Run the animation ---
