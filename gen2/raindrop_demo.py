@@ -21,13 +21,14 @@ def run_demo(strip):
     timeline = Timeline()
 
     # --- Instantiate all effects and store them on the timeline ---
-    timeline.gravity_filler = GravityFill(strip)
+    timeline.gravity_filler = RaindropFill(strip)
 
     # --- Schedule all actions ---
 
     # 0.0s: Start the pulsator effect
     dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(
-        timeline.gravity_filler.start()
+        timeline.gravity_filler.start(color=Color(255,255,255))
+        #timeline.gravity_filler.start()
     ))
 
     # --- Run the animation ---

@@ -508,6 +508,8 @@ class VenetianBlinds(BackgroundEffect):
 class Pulsator(BackgroundEffect):
     """ pulse in and out according to a sine wave that we use for V of the HSV color space.
 
+        note: this doesn't work as well as i'd like.  Use SimplePulsator instead or
+        figure out what's wrong with it and fix it.  thanks..
 
         duration is the total time for the effect in seconds
         max_v is a multiplier for the V value of the HSV color space
@@ -979,12 +981,12 @@ class _Raindrop:
         self.target_y = target_y
 
 
-class GravityFill(BackgroundEffect):
+class RaindropFill(BackgroundEffect):
     """
     Fills the strip with pixels that fall from the top with simulated gravity.
     """
 
-    def init(self, color=Color(0, 0, 255), min_launch_rate=5.0, max_launch_rate=15.0,
+    def init(self, color=Color(0, 0, 64), min_launch_rate=5.0, max_launch_rate=15.0,
              min_initial_velocity=10.0, max_initial_velocity=30.0, acceleration=50.0):
         self.color = color
         self.min_launch_rate = min_launch_rate

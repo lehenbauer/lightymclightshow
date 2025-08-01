@@ -46,7 +46,7 @@ blacklist snd_bcm2835
 
 ## notes on raspberry pi pins
 
-pwm0 is pin 32, the fifth one up from the bottom right if facing the board with the connector on the upper right -- is this right, better confirm
+pwm0 aka GPIO18 aka PWM0 is pin 12, the sixth one down from the top right if facing the board with the GPIO connector on the upper right
 
 pin 1 top left is 3.3 volts, pin 2 top right is 5V as is pin 4 just below it, the third pin on the right from the top is ground, also the bottom left pin is ground
 
