@@ -1056,6 +1056,54 @@ class RaindropFill(BackgroundEffect):
         return True
 
 
+class HighStriker(ForegroundEffect):
+    """
+    Simulates a high striker carnival game where a puck shoots up from the bottom
+    with an initial velocity and then falls back due to gravity (negative acceleration).
+    """
+
+    def init(self, r=255, g=0, b=0, puck_size_pct=5.0, launch_velocity_pct_per_sec=100.0, 
+             acceleration_pct_per_sec2=-50.0, duration=None):
+        self.color = Color(r, g, b)
+        self.puck_size_pct = puck_size_pct / 100.0  # Convert to fractional percentage
+        self.launch_velocity = (launch_velocity_pct_per_sec / 100.0) * self.width  # pixels per second
+        self.acceleration = (acceleration_pct_per_sec2 / 100.0) * self.width  # pixels per second^2
+        self.duration = duration
+        
+        # Calculate puck size in pixels
+        self.puck_size = max(1, int(self.puck_size_pct * self.width))
+        
+        # State tracking
+        self.is_complete = False
+        
+    def step(self, elapsed_time):
+        # Check duration if specified
+        if self.duration is not None and elapsed_time >= self.duration:
+            return False
+            
+        # Physics calculation: position = v0*t + 0.5*a*t^2
+        position = (self.launch_velocity * elapsed_time) + (0.5 * self.acceleration * elapsed_time * elapsed_time)
+        
+        # Calculate current velocity: v = v0 + a*t
+        current_velocity = self.launch_velocity + (self.acceleration * elapsed_time)
+        
+        # If puck has fallen back to ground (position <= 0) and is moving downward, we're done
+        if position <= 0 and current_velocity < 0:
+            if self.duration is None:
+                return False  # Effect complete
+            else:
+                # If duration is set, keep running but don't draw anything
+                return elapsed_time < self.duration
+        
+        # Draw the puck
+        for i in range(self.puck_size):
+            pixel_pos = int(position + i)
+            if 0 <= pixel_pos < self.width:
+                self.strip.setPixelColor(pixel_pos, self.color)
+        
+        return True
+
+
 # Example usage
 """
 # Create physical strip and wrap it
@@ -1090,6 +1138,14 @@ dispatcher.run_foreground_effect(
 chase = Chase(strip)
 dispatcher.run_foreground_effect(
     chase.start(r=255, g=0, b=0, speed=20.0)
+)
+
+# Run a high striker effect - like a carnival game
+high_striker = HighStriker(strip)
+dispatcher.run_foreground_effect(
+    high_striker.start(r=255, g=255, b=0, puck_size_pct=5.0, 
+                      launch_velocity_pct_per_sec=100.0, 
+                      acceleration_pct_per_sec2=-50.0)
 )
 
 # Run an image in the background
