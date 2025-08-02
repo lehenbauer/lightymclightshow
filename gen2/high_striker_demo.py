@@ -20,10 +20,12 @@ def run_demo(strip):
 
     # --- Parameters for the demo ---
     total_strikes = 10
-    min_velocity = 80.0  # % of strip per second
-    max_velocity = 150.0  # % of strip per second
-    min_launch_interval = 0.3  # seconds between launches
-    max_launch_interval = 1.0  # seconds between launches
+    min_velocity = 50.0  # % of strip per second
+    max_velocity = 100.0  # % of strip per second
+    min_launch_interval = 2.0  # seconds between launches
+    max_launch_interval = 5.0  # seconds between launches
+    acceleration = -50.0  # % per second^2 (negative for deceleration)
+    #acceleration = -25.0  # % per second^2 (negative for deceleration)
     
     # Different colors for variety
     colors = [
@@ -47,8 +49,7 @@ def run_demo(strip):
         # Random color
         r, g, b = random.choice(colors)
         
-        # Random puck size between 3% and 8%
-        puck_size = random.uniform(3.0, 8.0)
+        puck_size = 3
         
         # Create a new HighStriker instance for this strike
         striker = HighStriker(strip)
@@ -59,7 +60,7 @@ def run_demo(strip):
                 s.start(r=red, g=green, b=blue, 
                        puck_size_pct=size,
                        launch_velocity_pct_per_sec=v, 
-                       acceleration_pct_per_sec2=-50.0)
+                       acceleration_pct_per_sec2=acceleration)
             ))
         
         # Wait before next strike
