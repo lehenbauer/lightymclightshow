@@ -2,19 +2,44 @@
 
 # lightymclightshow
 
+LightyMcLightShow can do things with RGB LED strips pretty much beyond anything you've seen before.
+
+It comes with a library of interesting and, in some cases, dramatic effects.  New effects can be coded in dead simple python by you and your favorite reasonably high-end AI.
+
+Something else cool that you never see, multiple effects can run at the same time.  For example you might have two independent chases, the sparkle effect, and the pulsator effect play simultaneously.
+
+RGBW (RGB + white)?  No problem.
+
+LML can respond to its environment.  With a $20 USB GPS, LML effects' behavior can change according to latitude and longitude, speed, altitude, bearing, etc.  Add a $30 9DOF intertial unit and also sense acceleration, turn rate, magnetic heading (allowing you to detect the vehicle is going forward or backwards), etc.  Write something responsive to music by using fourier transforms on data read from a microphone or audio playback.
+
+One pretty cool LML effect is the ability to read an image file such as a png, jpeg, webp, etc, and play successive rows of the image to the light strips.  Like a piano roll.  This allows you to create subpixel-accurate maps of animations to play in your favorite image editor such as Photoshop.  Geometric 2D images with lots of black can produce some really stunning strip animations.
+
+
 This is python software to control as many WS2812B RGB LED strips or equivalent as you can reasonably put on a Raspberry Pi.
 
 It uses the rpi_ws281x library to control the LEDs and gpsd to get GPS data for speed-aware lighting effects, etc.
 
 It has a dispatcher class that an run many effects simultaneously.  
 
+### Frame rate independent
+
+LightyMcLightShow is frame rate independent.  Effects are time based, not frame based.  So for example if you get faster hardware and go from 30 fps to 60 or 100 fps, or free running at the maximum possible update rate, you don't have to change any of your effects; they will just be updated more frequently, usually resulting in a more fluid animation.
+
+### String size independent
+
+Most LightyMcLightShow effects specify the percentage of a string that is to be lit, rather than a number of pixels.  An installation running LightyMcLightShow that doubled their pixel density from 30 RGB pixels per meter to 60 will not have to change their effects, since width specifications are in percentages of string width. 
+
 ## Effects
 
-effects are python objects that have a start and a step method and do things to the lights.  they have a duration in seconds and are thus frame rate independent.  when the dispatcher calls the step method, it passes the elapsed time in seconds since the start of the effect.  the effect can then calculate what pixels it needs to set based on that time.
+Effects are python objects that have a start and a step method and do things to the lights.  When the dispatcher calls the step method, it passes the elapsed time in seconds since the start of the effect.  the effect can then calculate what pixels it needs to set based on that time.
 
 for example a fill effect that fills over 5 seconds would set half the pixels to the fill color at 2.5 seconds, all at 5 seconds.
 
-background effects operate on a background array of pixels that is the size of the strip, and they can set pixels to a color or leave them unchanged.  The dispatcher then takes the background array and sets the actual strip pixels to it when it calls the show method.
+There are two effects types, background effects and foreground effects.   You code them almost exactly the same but they are treated a little differently by LML.
+
+Background effects operate on a background array of pixels that is the size of the strip, and they can set pixels to a color or leave them unchanged.  After stepping all the background effects (usually only one is running) the dispatcher then takes the background array and sets the actual strip pixels to it when it calls the show method.
+
+Examples of background effects are doing a fill where you slowly change from one color to another from one end or another.  It eventually effects all the pixels.
 
 foreground effects operate directly on the strip pixels and can set them to a color or leave them unchanged.  The dispatcher calls the show method on the strip after all foreground effects have been stepped.
 
@@ -24,6 +49,17 @@ The step function returns True if there are more steps to follow and False if it
 Currently the action is in the gen2 directory.  Directories named "attic" contain old stuff and are unimportant.
 
 The code and effects are in gen2/dispatcher.py.
+
+## Aesthetics
+
+You want to create your effects according to the purpose of the installation.  The lobby of a nice hotel calls for subtle, unintrusive lighting that doesn't call attention to itself.  So you'd install the strips so the LEDs are only indirectly visible and go for slow fills of near-adjacent colors, probably from a relatively limited, muted color palette, developed in coordination with the designer, slow color wheels to different shades at a rate that's nearly imperceptible.
+
+Since each RGB LED can be individually set to one of about four million colors, this stuff kicks the crap out of cheesy 8-color RGB strips and especially when the pixels aren't individually addressable.
+
+
+
+
+
 
 
 ## prerequisites
@@ -46,6 +82,26 @@ blacklist snd_bcm2835
 
 ## notes on raspberry pi pins
 
+We're using the Adafruit pixel shifter https://learn.adafruit.com/adafruit-pixel-shifter/pinouts although an appropriately fast 3.3V to 5V level converter will do.
+
++---------------+          +-------------------+          +-------------------+          +-------------+
+| Raspberry Pi 4|          | Adafruit Pixel    |          | 12V Power Supply  |          | WS2815 Strip|
+| GPIO Header   |          | Shifter           |          | (e.g., 12V/5A+)   |          |             |
+|               |          |                   |          |             +12V  +--------->| +12V        |
+| Pin 1/17: 3V3 +--------->| V (3-5V power)    |          |              GND  +--------->| GND         |
+| Pin 2/4:  5V  |          |                   |          +-------------------+          |             |
+| Pin 32:  PWM0 +--------->| DAT (3.3V input)  |                                         |             |
+| Pin 6: GND    +--------->| G (ground)        +---------------------------------------->| GND         |
+|               |          |                   |                                         |             |
+|               |          | D5 (5V output)    +---------------------------------------->| DIN         |
+|               |          |                   |                                         |             |
+|               |          |                   |                                         |             |
++---------------+          +-------------------+                                         +-------------+
+
+pin 1 on the big connector is the top inside pin with the USB and ethernet at the bottom.  pin 2 is the top outside pin.
+
+pin 1 is 3V3 power and pin 2 is 5V power.  alternate 5V power on pin 4 and alternate 3V3 power on pin 17 (9th pin down on the inside), useful if you have a dorky fan hogging pin 1.
+
 pwm0 aka GPIO18 aka PWM0 is pin 12, the sixth one down from the top right if facing the board with the GPIO connector on the upper right
 
 pin 1 top left is 3.3 volts, pin 2 top right is 5V as is pin 4 just below it, the third pin on the right from the top is ground, also the bottom left pin is ground
@@ -54,7 +110,28 @@ also 9 down on the left is 3.3v
 
 bottom left is also ground
 
+
+ground is on pins 6, 9, 14, 20, 25, 30, 34, and 39.
+
+you'll need 3V3 and 5V for your level converter.
+
+on the breadboard, make the bottom power rail 3V3 and the top one 5V.
+
+pwm0 is pin 32, the fifth one up from the bottom right if facing the board with the connector on the upper right
+
+pwm0 needs to be connected to your low voltage in on one of your level converters.
+
+you need to run 3V3, 5V and ground to appropriate pins on your level converter.
+
+high voltage out on your level converter needs to go to your data line on your strip.
+
+everything needs to be grounded together.
+
+possibly old or wrong stuff:
+
 GPIO 18 is the sixth one down from the top right and that's the goodie for now
+
+^ or does PWM0 appear on multiple pins or does it need to be configured or what
 
 https://images.theengineeringprojects.com/image/webp/2021/03/raspberry-pi-4.png.webp?ssl=1
 
@@ -180,4 +257,5 @@ number the lights from 0 within a segment
 the dock segment might have a horizontal that's 100 wide and four verticals that are 40 high.
 
 so we might have horiz and vert1 through vert4
+
 
