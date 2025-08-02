@@ -1,3 +1,4 @@
+""" play all the images found recursively in the images dirctory to the lights"""
 
 import time
 import sys

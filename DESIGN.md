@@ -27,6 +27,8 @@ every frame:
 - invoke all the active effects that update the frame
 - show the frame
 
+really since most background effects set all the pixels, having more than one running at the same time is a waste.  Only the last one in sequence will have its pixels seen.
+
 is there a way for the effect to think it's doing a sleep and stuff so it doesn't have to get called as a callback, async or something?
 
 

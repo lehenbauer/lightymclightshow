@@ -21,24 +21,20 @@ def run_demo(strip):
     timeline = Timeline()
 
     # --- Instantiate all effects and store them on the timeline ---
-    timeline.pulsator = SimplePulsator(strip)
+    timeline.block_filler = BlockFill(strip)
 
     # --- Schedule all actions ---
 
     # 0.0s: Start the pulsator effect
     dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(
-        timeline.pulsator.start(min_node_width_pct=5, max_node_width_pct=20, n_nodes=3, node_pulses=2, low_h=0.7, high_h=0.55, s=1.0, min_v=0.0, max_v=0.5, duration=6)
-    ))
-
-    dispatcher.schedule(6.5, lambda: dispatcher.run_background_effect(
-        timeline.pulsator.start(min_node_width_pct=2.5, max_node_width_pct=2.5, n_nodes=10, node_pulses=5, low_h=0.5, high_h=0.6, s=1.0, min_v=0.5, max_v=0.5, duration=10, speed=20)
+        timeline.block_filler.start(r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=50.0, pause=0.5)
     ))
 
     # --- Run the animation ---
     # The dispatcher will now run until all scheduled events and effects are complete.
     dispatcher.run()
 
-    print("Pulsator demo complete.")
+    print("Block fill demo complete.")
     strip.blackout()
 
 

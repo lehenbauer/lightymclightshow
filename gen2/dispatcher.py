@@ -18,12 +18,24 @@ class Effect(ABC):
     def __init__(self, strip):
         self.strip = strip
         self.width = strip.width
+        self.pause_until = 0
+        self.pause_started_at = 0
 
     def start(self, **kwargs):
         """Start the effect with given parameters."""
         self.start_time = time.time()
         self.init(**kwargs)
         return self
+
+    def request_pause(self, duration):
+        """
+        Request a pause for this effect.
+        The dispatcher will not step this effect until the pause is over.
+        The effect's elapsed time will not advance during the pause.
+        """
+        now = time.time()
+        self.pause_until = now + duration
+        self.pause_started_at = now
 
     @abstractmethod
     def init(self, **kwargs):
@@ -232,6 +244,7 @@ class Dispatcher:
     def run_frame(self):
         """Process one frame of animation."""
         frame_start = time.time()
+        now = time.time()
 
         # Group effects by strip for efficient processing
         strips_to_update = set()
@@ -239,7 +252,17 @@ class Dispatcher:
         # Step all background effects and remove completed ones
         completed = []
         for effect in self.background_effects:
-            elapsed = time.time() - effect.start_time
+            if effect.pause_started_at > 0 and now >= effect.pause_until:
+                # Pause is over, correct the start time
+                actual_pause_duration = now - effect.pause_started_at
+                effect.start_time += actual_pause_duration
+                effect.pause_started_at = 0
+
+            if now < effect.pause_until:
+                strips_to_update.add(effect.strip)
+                continue
+
+            elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
             else:
@@ -261,7 +284,16 @@ class Dispatcher:
                 effect.strip.copy_color_to_strip()
                 strips_to_update.add(effect.strip)
 
-            elapsed = time.time() - effect.start_time
+            if effect.pause_started_at > 0 and now >= effect.pause_until:
+                # Pause is over, correct the start time
+                actual_pause_duration = now - effect.pause_started_at
+                effect.start_time += actual_pause_duration
+                effect.pause_started_at = 0
+
+            if now < effect.pause_until:
+                continue
+
+            elapsed = now - effect.start_time
             if not effect.step(elapsed):
                 completed.append(effect)
 
@@ -474,13 +506,30 @@ class VenetianBlinds(BackgroundEffect):
         return elapsed_time < self.duration
 
 class Pulsator(BackgroundEffect):
-    """ pulse in and out according to a sine wave that we use for V of the HSV color space. """
+    """ pulse in and out according to a sine wave that we use for V of the HSV color space.
 
-    def init(self, h=0.5, s=1.0, max_v=0.5, pulses=5, pulse_nodes=3, duration=10.0):
+        note: this doesn't work as well as i'd like.  Use SimplePulsator instead or
+        figure out what's wrong with it and fix it.  thanks..
+
+        duration is the total time for the effect in seconds
+        max_v is a multiplier for the V value of the HSV color space
+        pulses is the number of full sine wave cycles to complete in the duration
+        pulse_nodes is the number of nodes in the strip sine wave, i.e. how many spikes in the strip
+        offset is a constant offset added to the v_mul value to shift V up if desired.  if set to 0.2
+        for instance it will make sure that the max_v multiplier based on elapsed time and
+        nuimber of pulses will never be less than 0.2, so it won't go to zero.  it is ultimately clamped to
+        0 to 1 but if you want more LEDs lit at the bottom of the trough, set this higher.
+        threshold is a value that is subtracted from the V value to create a dead zone at the bottom of the trough
+        because if the result is < 0 it is clamed to 0.
+    """
+
+    def init(self, h=0.5, s=1.0, max_v=0.5, pulses=5, pulse_nodes=3, offset=0.2, threshold=0.2, duration=10.0):
         self.duration = duration
         self.max_v = max_v
         self.pulses = pulses
         self.pulse_nodes = pulse_nodes  # Number of nodes in the strip sine wave
+        self.offset = offset
+        self.threshold = threshold
         self.h = h
         self.s = s
 
@@ -492,13 +541,76 @@ class Pulsator(BackgroundEffect):
         # there are two kinds of pulses, the overall ramping of v
         # and the number within the strip
         ratio = elapsed_time / self.duration
-        v_mul = abs(math.sin(ratio * self.pulses * math.pi))
+        v_mul = abs(math.sin(ratio * self.pulses * math.pi)) + self.offset
         for i in range(self.width):
-            t = (i / self.width) * self.pulse_nodes * 2 * math.pi
-            v = self.max_v * v_mul * abs(math.sin(t))
-            r, g, b = self.hsv_to_rgb(self.h, self.s, v)
-            print(f'i: {i}, t: {t:2f}, v_mul: {v_mul:2f}, v: {v:2f}, r: {r}, g: {g}, b: {b}')  # Debugging output
-            self.background[i] = Color(r, g, b)
+            t = (i / self.width) * self.pulse_nodes * math.pi
+            abs_sin_t = abs(math.sin(t))
+            v = min(1.0, max(0.0, self.max_v * v_mul * abs_sin_t))
+            if v < self.threshold:
+                self.background[i] = 0
+            else:
+                r, g, b = self.hsv_to_rgb(self.h, self.s, v)
+                self.background[i] = Color(r, g, b)
+
+        return elapsed_time < self.duration
+
+class SimplePulsator(BackgroundEffect):
+    def init(self, min_node_width_pct=5, max_node_width_pct=10, n_nodes=3, node_pulses=5, low_h=0.7, high_h=0.7, s=1.0, min_v=0.1, max_v=1.0, duration=10, speed=0):
+        self.duration = duration
+        self.min_node_width_pct = min_node_width_pct / 100.0  # Convert to fractional percentage
+        self.max_node_width_pct = max_node_width_pct / 100.0  # ditto
+        self.n_nodes = n_nodes
+        self.node_pulses = node_pulses
+        self.low_h = low_h
+        self.high_h = high_h
+        self.s = s
+        self.min_v = min_v
+        self.max_v = max_v
+        self.speed = speed
+
+    def step(self, elapsed_time):
+        # Overall progress for pulsing effect
+        # We use a sine wave that completes `node_pulses` cycles over the duration.
+        # The result is mapped to a 0.0-1.0 range (pulse_t).
+        pulse_angle = (elapsed_time / self.duration) * self.node_pulses * 2 * math.pi
+        pulse_t = (math.sin(pulse_angle) + 1) / 2.0
+
+        # Interpolate h, v, and node_width based on the pulse progress
+        h = self.low_h + (self.high_h - self.low_h) * pulse_t
+        v = self.min_v + (self.max_v - self.min_v) * pulse_t
+        node_width_pct = self.min_node_width_pct + (self.max_node_width_pct - self.min_node_width_pct) * pulse_t
+        node_width_pixels = node_width_pct * self.width
+
+        # Calculate the color for the lit pixels
+        r, g, b = self.hsv_to_rgb(h, self.s, v)
+        color = Color(r, g, b)
+
+        # Calculate the movement shift
+        speed_pixels_per_sec = self.speed / 100.0 * self.width
+        shift = speed_pixels_per_sec * elapsed_time
+
+        # Determine the spacing and start of the first node
+        if self.n_nodes > 0:
+            spacing = self.width / self.n_nodes
+            start_offset = (spacing - node_width_pixels) / 2
+        else:
+            spacing = 0
+            start_offset = 0
+
+        # Clear the background before drawing the new state
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+        # Draw the nodes
+        for i in range(self.n_nodes):
+            node_start_unwrapped = i * spacing + start_offset + shift
+            node_end_unwrapped = node_start_unwrapped + node_width_pixels
+
+            # Handle wrapping for wider nodes
+            # We draw segments of the node if it wraps around the strip
+            for p_offset in range(int(node_width_pixels) + 1):
+                p = int(node_start_unwrapped + p_offset) % self.width
+                self.background[p] = color
 
         return elapsed_time < self.duration
 
@@ -760,6 +872,187 @@ class Chase(ForegroundEffect):
             return elapsed_time < self.duration
 
         # If no duration, run continuously
+        return True
+
+class BlockFill(BackgroundEffect):
+    """
+    Fills the strip by animating blocks into place one by one from right to left.
+    Includes a pause before each block animation.
+    """
+
+    def init(self, r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=100.0, pause=0.2):
+        self.color = Color(r, g, b)
+        self.block_width_pct = block_width_pct / 100.0
+        self.outline_pct = outline_pct / 100.0
+        self.pause_duration = pause
+
+        # Speed in pixels per second for the animation
+        self.speed_pps = (speed_pct_per_sec / 100.0) * self.width
+
+        # Calculate dimensions in pixels
+        self.block_width_pixels = int(self.block_width_pct * self.width)
+        self.outline_pixels = int(self.outline_pct * self.width)
+        self.total_block_width = self.block_width_pixels + self.outline_pixels
+
+        if self.total_block_width <= 0:
+            self.num_blocks = 0
+        else:
+            self.num_blocks = math.ceil(self.width / self.total_block_width)
+
+        # Animation state
+        self.current_block_index = 0
+        self.block_animation_start_time = 0
+        self._calculate_current_block_duration()
+
+        # Start with a pause
+        self.request_pause(self.pause_duration)
+
+
+    def _calculate_current_block_duration(self):
+        """Calculates the animation duration for the current block based on speed."""
+        if self.current_block_index >= self.num_blocks:
+            self.current_block_duration = 0
+            return
+
+        # The block's final destination (left edge), calculated from the right.
+        # The animation starts from the far left (pixel 0).
+        target_start_pos = self.width - (self.current_block_index + 1) * self.total_block_width
+        distance_to_travel = max(0, target_start_pos)
+
+        if self.speed_pps > 0:
+            self.current_block_duration = distance_to_travel / self.speed_pps
+        else:
+            self.current_block_duration = 0  # Appears instantly if no speed
+
+        # This marks the beginning of the animation for the current block,
+        # relative to the effect's total elapsed time.
+        self.block_animation_start_time = time.time() - self.start_time
+
+
+    def step(self, elapsed_time):
+        if self.current_block_index >= self.num_blocks:
+            return False  # Effect is complete
+
+        # --- Animation Progress ---
+        elapsed_for_block = elapsed_time - self.block_animation_start_time
+        progress = min(elapsed_for_block / self.current_block_duration, 1.0) if self.current_block_duration > 0 else 1.0
+
+        # --- Drawing ---
+        # Clear the entire background for this frame
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+        # Redraw all settled blocks at their final positions (from the right)
+        for i in range(self.current_block_index):
+            start_pos = self.width - (i + 1) * self.total_block_width
+            for p_offset in range(self.block_width_pixels):
+                p = start_pos + p_offset
+                if 0 <= p < self.width:
+                    self.background[p] = self.color
+
+        # Draw the currently animating block
+        target_start_pos = self.width - (self.current_block_index + 1) * self.total_block_width
+        current_start_pos = int(max(0, target_start_pos) * progress)
+        for p_offset in range(self.block_width_pixels):
+            p = current_start_pos + p_offset
+            if 0 <= p < self.width:
+                self.background[p] = self.color
+
+        # --- State Update ---
+        if progress >= 1.0:
+            # The block is now settled. Increment index for the next block.
+            self.current_block_index += 1
+
+            # Request a pause before the next block (or before finishing)
+            self.request_pause(self.pause_duration)
+
+            # If there are more blocks, calculate the next duration
+            if self.current_block_index < self.num_blocks:
+                self._calculate_current_block_duration()
+
+        return True
+
+
+# Helper class for the GravityFill effect
+class _Raindrop:
+    def __init__(self, initial_velocity, target_y):
+        self.start_time = time.time()
+        self.initial_velocity = initial_velocity
+        self.target_y = target_y
+
+
+class RaindropFill(BackgroundEffect):
+    """
+    Fills the strip with pixels that fall from the top with simulated gravity.
+    """
+
+    def init(self, color=Color(0, 0, 64), min_launch_rate=5.0, max_launch_rate=15.0,
+             min_initial_velocity=10.0, max_initial_velocity=30.0, acceleration=50.0):
+        self.color = color
+        self.min_launch_rate = min_launch_rate
+        self.max_launch_rate = max_launch_rate
+        self.min_initial_velocity = min_initial_velocity
+        self.max_initial_velocity = max_initial_velocity
+        self.acceleration = acceleration
+
+        # Animation state
+        self.active_raindrops = []
+        self.pixels_filled = 0
+        self.next_launch_time = 0.0
+
+        # Clear the background initially
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+    def step(self, elapsed_time):
+        if self.pixels_filled >= self.width and not self.active_raindrops:
+            return False  # Effect is complete
+
+        now = time.time()
+
+        # 1. Launch new raindrops if it's time
+        if now >= self.next_launch_time and self.pixels_filled < self.width:
+            target_y = self.width - self.pixels_filled - 1
+            initial_velocity = random.uniform(self.min_initial_velocity, self.max_initial_velocity)
+            drop = _Raindrop(initial_velocity, target_y)
+            self.active_raindrops.append(drop)
+
+            # Schedule the next launch
+            launch_rate = random.uniform(self.min_launch_rate, self.max_launch_rate)
+            if launch_rate > 0:
+                self.next_launch_time = now + (1.0 / launch_rate)
+            else:
+                # Avoid division by zero, wait a bit
+                self.next_launch_time = now + 0.1
+
+        # 2. Clear the background to black
+        for i in range(self.width):
+            self.background[i] = Color(0, 0, 0)
+
+        # 3. Redraw all settled pixels
+        for i in range(self.pixels_filled):
+            self.background[self.width - 1 - i] = self.color
+
+        # 4. Update and draw active raindrops
+        still_falling = []
+        newly_landed = 0
+        for drop in self.active_raindrops:
+            time_since_launch = now - drop.start_time
+            # Physics: pos = v_initial * t + 0.5 * a * t^2
+            pos = (drop.initial_velocity * time_since_launch) + (0.5 * self.acceleration * time_since_launch**2)
+
+            if pos >= drop.target_y:
+                newly_landed += 1
+            else:
+                # Still falling, draw it at its current position
+                pixel_pos = int(pos)
+                if 0 <= pixel_pos < self.width:
+                    self.background[pixel_pos] = self.color
+                still_falling.append(drop)
+
+        self.active_raindrops = still_falling
+        self.pixels_filled += newly_landed
+
         return True
 
 
