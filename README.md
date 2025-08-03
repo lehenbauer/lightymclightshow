@@ -190,6 +190,18 @@ i wrote some stuff that can play lines of an image successively to the LEDs.  It
 
 play images, play2.py
 
+## Audio
+
+We use python-sounddevice to read audio from a microphone or audio playback device.  This allows us to do things like react to music, or use the audio as a source for effects.
+
+We use pyFFTW to do fast fourier transforms on the audio data to get frequency and amplitude data.
+
+```
+sudo apt install libportaudio2 libasound2-dev python3-cffi libatlas-base-dev portaudio19-dev
+pip install sounddevice
+pip install pyFFTW
+```
+
 ## GPS
 
 We are going to have effects that are GPS-aware.
