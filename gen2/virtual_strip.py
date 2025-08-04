@@ -20,6 +20,9 @@ class VirtualStrip:
         # Background buffer for the virtual strip
         self.background = []
 
+        # Cache of unique physical strips for efficient show() calls
+        self._physical_strips = set()
+
     def add_pixel_range(self, strip, start_pixel, end_pixel):
         """
         Add a range of pixels from a physical strip to this virtual strip.
@@ -57,6 +60,9 @@ class VirtualStrip:
         # Update width and background buffer
         self.width = len(self._pixel_map)
         self.background = [Color(0, 0, 0)] * self.width
+
+        # Update cached physical strips set
+        self._physical_strips.add(strip)
 
     def setPixelColor(self, n, color):
         """
@@ -102,18 +108,9 @@ class VirtualStrip:
         """
         Update all affected physical strips to show current pixel values.
         Only calls show() once per unique physical strip.
-
-        Not too sure about this.  It's inefficient.  It could cache
-        the list of strips.  but i'm not sure if a virtual strip even
-        needs a show.
         """
-        # Get unique strips that need updating
-        updated_strips = set()
-        for strip, _ in self._pixel_map:
-            updated_strips.add(strip)
-
-        # Show each unique strip
-        for strip in updated_strips:
+        # Use cached set of physical strips
+        for strip in self._physical_strips:
             strip.show()
 
     def __len__(self):
