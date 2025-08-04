@@ -18,7 +18,7 @@ class Strip:
         """
         self.strip = physical_strip
         self.width = physical_strip.numPixels()
-        
+
         # Background buffer - what pixels return to each frame
         self.background = [Color(0, 0, 0)] * self.width
 
@@ -56,3 +56,52 @@ class Strip:
     def numPixels(self):
         """Return the number of pixels in the strip."""
         return self.width
+
+    def __len__(self):
+        """Return the number of pixels in the strip."""
+        return self.width
+
+    def __getitem__(self, key):
+        """
+        Get pixel color(s) from the strip's background buffer.
+        Supports single index and slice notation.
+        """
+        if isinstance(key, int):
+            # Single pixel
+            if key < 0:
+                key = self.width + key
+            if key < 0 or key >= self.width:
+                raise IndexError(f"Pixel index {key} out of range")
+            return self.background[key]
+        elif isinstance(key, slice):
+            # Slice of pixels
+            return self.background[key]
+        else:
+            raise TypeError(f"Invalid index type: {type(key)}")
+
+    def __setitem__(self, key, color):
+        """
+        Set pixel color(s) in the strip.
+        Supports single index and slice notation.
+
+        Examples:
+            strip[0] = Color(255, 0, 0)  # Set single pixel
+            strip[10:20] = Color(0, 255, 0)  # Set range of pixels
+            strip[::2] = Color(0, 0, 255)  # Set every other pixel
+        """
+        if isinstance(key, int):
+            # Single pixel
+            if key < 0:
+                key = self.width + key
+            if key < 0 or key >= self.width:
+                raise IndexError(f"Pixel index {key} out of range")
+            self.setPixelColor(key, color)
+            self.background[key] = color
+        elif isinstance(key, slice):
+            # Slice of pixels
+            indices = range(*key.indices(self.width))
+            for i in indices:
+                self.setPixelColor(i, color)
+                self.background[i] = color
+        else:
+            raise TypeError(f"Invalid index type: {type(key)}")
