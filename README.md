@@ -29,6 +29,16 @@ LightyMcLightShow is frame rate independent.  Effects are time based, not frame 
 
 Most LightyMcLightShow effects specify the percentage of a string that is to be lit, rather than a number of pixels.  An installation running LightyMcLightShow that doubled their pixel density from 30 RGB pixels per meter to 60 will not have to change their effects, since width specifications are in percentages of string width. 
 
+### Update Rate
+
+* ~110 Hz max for a 300-LED RGB strip
+* ~80–85 Hz max for the same length if each LED is RGBW
+
+There is a ~50 μs “reset” low‐pulse between frames, so real-world max refresh will be just slightly under these values
+
+So to go to 600 LEDs on one interface, you'd be halving the frame rate.  Still pretty good, though.
+
+
 ## Effects
 
 Effects are python objects that have a start and a step method and do things to the lights.  When the dispatcher calls the step method, it passes the elapsed time in seconds since the start of the effect.  the effect can then calculate what pixels it needs to set based on that time.
