@@ -21,20 +21,26 @@ It uses the rpi_ws281x library to control the LEDs and gpsd to get GPS data for 
 
 It has a dispatcher class that an run many effects simultaneously.  
 
-### Frame rate independent
+### Frame Rate Independent
 
 LightyMcLightShow is frame rate independent.  Effects are time based, not frame based.  So for example if you get faster hardware and go from 30 fps to 60 or 100 fps, or free running at the maximum possible update rate, you don't have to change any of your effects; they will just be updated more frequently, usually resulting in a more fluid animation.
 
-### String size independent
+### String Size Independent
 
 Most LightyMcLightShow effects specify the percentage of a string that is to be lit, rather than a number of pixels.  An installation running LightyMcLightShow that doubled their pixel density from 30 RGB pixels per meter to 60 will not have to change their effects, since width specifications are in percentages of string width. 
+
+### Synchronize Multiple Raspberry Pi
+
+A large installation, it can be ever so mucn more convenient to have multiple synchronized computers than to have one computer that's wired to everything.  As long as computers can see each other over the internet, they can synchronize, and actually, even if they can't, as long as they have accurate network time.
+
+This is an aspirational goal but it's easy enough.
 
 ### Update Rate
 
 * ~110 Hz max for a 300-LED RGB strip
 * ~80–85 Hz max for the same length if each LED is RGBW
 
-There is a ~50 μs “reset” low‐pulse between frames, so real-world max refresh will be just slightly under these values
+There is a ~50 μs “reset” low‐pulse between frames, so real-world max refresh will be just slightly under these values.
 
 So to go to 600 LEDs on one interface, you'd be halving the frame rate.  Still pretty good, though.
 
@@ -202,9 +208,14 @@ play images, play2.py
 
 ## Audio
 
-We use python-sounddevice to read audio from a microphone or audio playback device.  This allows us to do things like react to music, or use the audio as a source for effects.
+We use python-sounddevice to read audio from a microphone or audio playback device.
 
-We use pyFFTW to do fast fourier transforms on the audio data to get frequency and amplitude data.
+Use a USB audio capture board that works with Linux on the Pi such as https://www.amazon.com/gp/product/B07BHGWBFY/ref=ewc_pr_img_3.
+
+We use pyFFTW to do fast fourier transforms on the audio data to get amplitude data for a dozen frequency ranges.
+
+You can use this data to make your effects react to music (or sound in general.)
+
 
 ```
 sudo apt install libportaudio2 libasound2-dev python3-cffi libatlas-base-dev portaudio19-dev
