@@ -66,13 +66,7 @@ You want to create your effects according to the purpose of the installation.  T
 
 Since each RGB LED can be individually set to one of about four million colors, this stuff kicks the crap out of cheesy 8-color RGB strips and especially when the pixels aren't individually addressable.
 
-
-
-
-
-
-
-## prerequisites
+## Prerequisites
 
 apt install git cmake
 apt install python3-dev
@@ -90,6 +84,35 @@ add to /etc/modprobe.d/snd-blacklist.conf
 blacklist snd_bcm2835
 ```
 
+if using SPI, you have to enable it:
+
+add to /boot/firmware/config.txt
+
+```
+dtparam=spi=on
+dtoverlay=spi1-1cs
+```
+
+^ the dtoverlay enables the second SPI controller, SPI 1.
+
+
+Add this to /boot/firmware/cmdline.txt (NOTE cmdline.txt not config.txt):
+
+```
+spidev.bufsize=32768
+```
+
+and do a
+
+```
+sudo adduser $USER gpio
+```
+
+Using spi you don't have to run as root and mess with /dev/mem as you do with PWM0.
+
+SPI1 uses MOSI on GPIO20, MISO 19, SCLK 21, and CE0/1/2 on 18/17/16. You enable it via a device‑tree overlay (e.g. dtoverlay=spi1-1cs or spi1-3cs), which creates /dev/spidev1.0 (and optionally 1.1/1.2).
+
+
 ## notes on raspberry pi pins
 
 We're using the Adafruit pixel shifter https://learn.adafruit.com/adafruit-pixel-shifter/pinouts although an appropriately fast 3.3V to 5V level converter will do.
@@ -100,7 +123,7 @@ We're using the Adafruit pixel shifter https://learn.adafruit.com/adafruit-pixel
 |               |          |                   |          |             +12V  +--------->| +12V        |
 | Pin 1/17: 3V3 +--------->| V (3-5V power)    |          |              GND  +--------->| GND         |
 | Pin 2/4:  5V  |          |                   |          +-------------------+          |             |
-| Pin 32:  PWM0 +--------->| DAT (3.3V input)  |                                         |             |
+| Pin 12:  PWM0 +--------->| DAT (3.3V input)  |                                         |             |
 | Pin 6: GND    +--------->| G (ground)        +---------------------------------------->| GND         |
 |               |          |                   |                                         |             |
 |               |          | D5 (5V output)    +---------------------------------------->| DIN         |
@@ -112,7 +135,13 @@ pin 1 on the big connector is the top inside pin with the USB and ethernet at th
 
 pin 1 is 3V3 power and pin 2 is 5V power.  alternate 5V power on pin 4 and alternate 3V3 power on pin 17 (9th pin down on the inside), useful if you have a dorky fan hogging pin 1.
 
-pwm0 aka GPIO18 aka PWM0 is pin 12, the sixth one down from the top right if facing the board with the GPIO connector on the upper right
+pwm0 aka BCM GPIO18 aka PWM0 is header pin 12, the sixth one down from the top right if facing the board with the GPIO connector on the upper right
+
+SPI is BCM GPIO 10 (MOSI), BCM GPIO 9 (MISO), BCM GPIO 11 (SCLK), and BCM GPIO 8 (CE0).  Only MOSI is relevant for using SPI to control lights.  GPIO 10 is pin 19 on the 40-pin GPIO connector, GPIO 9 is pin 21, GPIO 11 is pin 23, and GPIO 8 is pin 24 on the header.
+
+So if you use SPI (LED_PIN to 10 in hardware.py)  move the data wire to pin 19 on the header, which is the tenth pin down from the top left if the USB and ethernet connects are at the bottom.
+
+With updated rpi_ws281x you can use SPI 1 as well.  Select LED_PIN 20 when creating your strip.  That's MOSI 1.  Note that GPIO 20 is only available on machines equipped with a 40 pin GPIO connector, and it appears on pin 38, one up from the bottom right if you face the connector with ethernet and USB toward the bottom.
 
 pin 1 top left is 3.3 volts, pin 2 top right is 5V as is pin 4 just below it, the third pin on the right from the top is ground, also the bottom left pin is ground
 
@@ -155,6 +184,7 @@ core_freq_min=500
 ```
 
 to avoid the idle CPU scaling changing the SPI frequency and breaking the timings
+
 sudo ./test --width 300 --height 1 --gpio 18
 
 is putting something on the scope
