@@ -96,10 +96,10 @@ dtoverlay=spi1-1cs
 ^ the dtoverlay enables the second SPI controller, SPI 1.
 
 
-Add this to /boot/firmware/cmdline.txt (NOTE cmdline.txt not config.txt):
+Add this to /boot/firmware/cmdline.txt (NOTE cmdline.txt *not* config.txt - also NOTE *bufsiz* not bufsize):
 
 ```
-spidev.bufsize=32768
+spidev.bufsiz=32768
 ```
 
 and do a
