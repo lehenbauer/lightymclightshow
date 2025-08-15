@@ -46,7 +46,7 @@ def run_demo(strips):
         ))
 
     # 0.0s: A chain of wipes on both strips, each 3s long
-    for i, (strip, timeline) in enumerate(zip(physical_strips, timelines)):
+    for i, (strip, timeline) in enumerate(zip(strips, timelines)):
         wipe_chain = Chain(strip, [
             lambda tl=timeline: dispatcher.run_background_effect(tl.wipe1.start(r=0, g=20, b=0, duration=3.0)),
             lambda tl=timeline: dispatcher.run_background_effect(tl.wipe2.start(r=30, g=20, b=50, duration=3.0)),
@@ -63,7 +63,7 @@ def run_demo(strips):
         ))
 
     # 14.0s: Blackout both strips before pulses
-    for strip in physical_strips:
+    for strip in strips:
         dispatcher.schedule(14.0, lambda s=strip: s.blackout())
 
     # 14.5s: First pulse on both strips
@@ -73,7 +73,7 @@ def run_demo(strips):
         ))
 
     # 17.0s: Blackout both strips
-    for strip in physical_strips:
+    for strip in strips:
         dispatcher.schedule(17.0, lambda s=strip: s.blackout())
 
     # 17.5s: Second pulse on both strips
@@ -83,7 +83,7 @@ def run_demo(strips):
         ))
 
     # 20.0s: Blackout both strips
-    for strip in physical_strips:
+    for strip in strips:
         dispatcher.schedule(20.0, lambda s=strip: s.blackout())
 
     # 20.5s: Sparkles for 5 seconds on both strips
@@ -93,7 +93,7 @@ def run_demo(strips):
         ))
 
     # 26.0s: Blackout both strips
-    for strip in physical_strips:
+    for strip in strips:
         dispatcher.schedule(26.0, lambda s=strip: s.blackout())
 
     # 26.5s: Two chases and sparkles running together for 10s on both strips
@@ -109,7 +109,7 @@ def run_demo(strips):
         ))
 
     # 37.0s: Final blackout on both strips
-    for strip in physical_strips:
+    for strip in strips:
         dispatcher.schedule(37.0, lambda s=strip: s.blackout())
 
     # --- Run the animation ---
@@ -117,15 +117,15 @@ def run_demo(strips):
     dispatcher.run()
 
     print("Demo complete.")
-    for strip in physical_strips:
+    for strip in strips:
         strip.blackout()
 
 
 if __name__ == "__main__":
     try:
-        run_demo(physical_strips)
+        run_demo(strips)
     except KeyboardInterrupt:
         # Clean up and exit gracefully
         print("\nKeyboard interrupt received. Turning off LEDs and exiting...")
-        for strip in physical_strips:
+        for strip in strips:
             strip.blackout()
