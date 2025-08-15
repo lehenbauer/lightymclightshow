@@ -9,7 +9,7 @@ from physical_strip import PhysicalStrip
 
 
 class LogicalStrip:
-    """Maps logical strip pixels to one or more physical strips."
+    """Maps logical strip pixels to one or more physical strips."""
 
     def __init__(self):
         """Initialize an empty logical strip."""
