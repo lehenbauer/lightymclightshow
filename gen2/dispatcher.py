@@ -1104,6 +1104,55 @@ class HighStriker(ForegroundEffect):
         return True
 
 
+class CircleWhip(ForegroundEffect):
+    """
+    A line of pixels that whips around the strip at a configurable speed.
+    The line wraps around when it reaches the end of the strip.
+    """
+
+    def init(self, r=255, g=0, b=0, width_pct=0.5, speed=2.0, duration=None):
+        """
+        Initialize the circle whip effect.
+        
+        Args:
+            r, g, b: Color of the whip line
+            width_pct: Width of the line as a percentage of the total strip (e.g., 0.5 for 0.5%)
+            speed: How many times per second the whip completes a full circle
+            duration: Optional duration in seconds (None for continuous)
+        """
+        self.color = Color(r, g, b)
+        self.line_width = max(1, int((width_pct / 100.0) * self.width))
+        self.speed = speed  # circles per second
+        self.duration = duration
+
+    def step(self, elapsed_time):
+        # Calculate how far around the circle we've traveled
+        # speed is in circles per second, so position is a fraction of the strip length
+        position_fraction = (elapsed_time * self.speed) % 1.0
+        
+        # Convert to pixel position
+        start_pixel = int(position_fraction * self.width)
+        
+        # Draw the line of pixels using slice assignment
+        end_pixel = start_pixel + self.line_width
+        
+        if end_pixel <= self.width:
+            # Line doesn't wrap around - simple slice
+            self.strip[start_pixel:end_pixel] = self.color
+        else:
+            # Line wraps around the end - need two slices
+            self.strip[start_pixel:self.width] = self.color
+            wrap_pixels = end_pixel - self.width
+            self.strip[0:wrap_pixels] = self.color
+        
+        # Check duration if specified
+        if self.duration is not None:
+            return elapsed_time < self.duration
+        
+        # Run forever if no duration
+        return True
+
+
 # Example usage
 """
 # Create physical strip and wrap it
