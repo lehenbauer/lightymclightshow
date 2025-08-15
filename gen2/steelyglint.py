@@ -6,7 +6,8 @@
 # Modified for Steely Glint with dual light strips
 
 import time
-from rpi_ws281x import PixelStrip, Color, ws
+from rpi_ws281x import Color, ws
+from physical_strip import PhysicalStrip
 
 # LED strip configuration:
 LED_COUNT = 470       # Number of LED pixels per strip
@@ -23,7 +24,7 @@ def initialize_strips():
     # Create NeoPixel objects for both strips
     strips = []
     for pin in LED_PINS:
-        strip = PixelStrip(LED_COUNT, pin, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, strip_type=LED_STRIP_TYPE)
+        strip = PhysicalStrip(LED_COUNT, pin, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, strip_type=LED_STRIP_TYPE)
         # Initialize the library (must be called once before other functions)
         strip.begin()
         strips.append(strip)

@@ -6,6 +6,7 @@ import time
 
 from hardware import *
 from dispatcher import *
+from physical_strip import PhysicalStrip
 
 strip = initialize_strip()
 

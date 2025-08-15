@@ -8,10 +8,9 @@ import random
 
 from hardware import *
 from dispatcher import *
-from strip import Strip
+from physical_strip import PhysicalStrip
 
-physical_strip = initialize_strip()
-strip = Strip(physical_strip)
+strip = initialize_strip()
 
 def run_demo(strip):
     """Run the Pulsator demo sequence."""
@@ -35,7 +34,7 @@ def run_demo(strip):
     # The dispatcher will now run until all scheduled events and effects are complete.
     dispatcher.run()
 
-    print("Block fill demo complete.")
+    print("Raindrop demo complete.")
     strip.blackout()
 
 

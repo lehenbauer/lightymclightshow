@@ -8,15 +8,13 @@ import random
 
 from hardware import *
 from dispatcher import *
-from strip import Strip
-from virtual_strip import VirtualStrip
+from physical_strip import PhysicalStrip
+from logical_strip import LogicalStrip
 
 physical_strip = initialize_strip()
 
-virtual_strip = VirtualStrip()
-virtual_strip.add_pixel_range(physical_strip, len(physical_strip) -1, 0)
-
-#strip = Strip(physical_strip)
+logical_strip = LogicalStrip()
+logical_strip.add_pixel_range(physical_strip, len(physical_strip) -1, 0)
 
 def run_demo(strip):
     """Run the Pulsator demo sequence."""
@@ -26,7 +24,7 @@ def run_demo(strip):
     timeline = Timeline()
 
     # --- Instantiate all effects and store them on the timeline ---
-    timeline.gravity_filler = RaindropFill(virtual_strip)
+    timeline.gravity_filler = RaindropFill(logical_strip)
 
     # --- Schedule all actions ---
 
@@ -46,8 +44,8 @@ def run_demo(strip):
 
 if __name__ == "__main__":
     try:
-        run_demo(virtual_strip)
+        run_demo(logical_strip)
     except KeyboardInterrupt:
         # Clean up and exit gracefully
         print("\nKeyboard interrupt received. Turning off LEDs and exiting...")
-        strip.blackout()
+        logical_strip.blackout()

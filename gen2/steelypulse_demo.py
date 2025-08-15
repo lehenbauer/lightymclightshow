@@ -7,10 +7,9 @@ import random
 
 from steelyglint import *
 from dispatcher import *
-from strip import Strip
+from physical_strip import PhysicalStrip
 
 physical_strips = initialize_strips()
-strips = [Strip(ps) for ps in physical_strips]
 dispatcher = Dispatcher()
 
 def run_demo(strips):
@@ -37,9 +36,9 @@ def run_demo(strips):
 
 if __name__ == "__main__":
     try:
-        run_demo(strips)
+        run_demo(physical_strips)
     except KeyboardInterrupt:
         # Clean up and exit gracefully
         print("\nKeyboard interrupt received. Turning off LEDs and exiting...")
-        for strip in strips:
+        for strip in physical_strips:
             strip.blackout()
