@@ -3,13 +3,13 @@
 import time
 import sys
 
-from hardware import *
+from steelyglint import *
 from image_stuff import *
 from dispatcher import *
 from strip import Strip
 
-physical_strip = initialize_strip()
-strip = Strip(physical_strip)
+physical_strips = initialize_strips()
+strips = [Strip(ps) for ps in physical_strips]
 
 def load_image_effects(strip, dir, recursive=False):
     effect_list = []
