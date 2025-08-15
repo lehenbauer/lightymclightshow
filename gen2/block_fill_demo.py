@@ -27,7 +27,7 @@ def run_demo(strip):
 
     # 0.0s: Start the pulsator effect
     dispatcher.schedule(0.0, lambda: dispatcher.run_background_effect(
-        timeline.block_filler.start(r=0, g=0, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=50.0, pause=0.5)
+        timeline.block_filler.start(r=255, g=255, b=255, block_width_pct=5.0, outline_pct=1.0, speed_pct_per_sec=50.0, pause=0.5)
     ))
 
     # --- Run the animation ---
