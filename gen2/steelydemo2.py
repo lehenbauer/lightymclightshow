@@ -4,11 +4,13 @@
 import time
 import sys
 
-from steelyglint import *
+#from steelyglint import *
 from dispatcher import *
-from physical_strip import PhysicalStrip
+#from physical_strip import PhysicalStrip
 
-physical_strips = initialize_strips()
+from steely_logical import *
+
+strips = [starboard_strip, port_strip]
 
 def run_demo(strips):
     """Run the LED demo sequence on both strips."""
