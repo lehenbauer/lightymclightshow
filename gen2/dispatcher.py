@@ -1062,31 +1062,31 @@ class HighStriker(ForegroundEffect):
     with an initial velocity and then falls back due to gravity (negative acceleration).
     """
 
-    def init(self, r=255, g=0, b=0, puck_size_pct=5.0, launch_velocity_pct_per_sec=100.0, 
+    def init(self, r=255, g=0, b=0, puck_size_pct=5.0, launch_velocity_pct_per_sec=100.0,
              acceleration_pct_per_sec2=-50.0, duration=None):
         self.color = Color(r, g, b)
         self.puck_size_pct = puck_size_pct / 100.0  # Convert to fractional percentage
         self.launch_velocity = (launch_velocity_pct_per_sec / 100.0) * self.width  # pixels per second
         self.acceleration = (acceleration_pct_per_sec2 / 100.0) * self.width  # pixels per second^2
         self.duration = duration
-        
+
         # Calculate puck size in pixels
         self.puck_size = max(1, int(self.puck_size_pct * self.width))
-        
+
         # State tracking
         self.is_complete = False
-        
+
     def step(self, elapsed_time):
         # Check duration if specified
         if self.duration is not None and elapsed_time >= self.duration:
             return False
-            
+
         # Physics calculation: position = v0*t + 0.5*a*t^2
         position = (self.launch_velocity * elapsed_time) + (0.5 * self.acceleration * elapsed_time * elapsed_time)
-        
+
         # Calculate current velocity: v = v0 + a*t
         current_velocity = self.launch_velocity + (self.acceleration * elapsed_time)
-        
+
         # If puck has fallen back to ground (position <= 0) and is moving downward, we're done
         if position <= 0 and current_velocity < 0:
             if self.duration is None:
@@ -1094,13 +1094,13 @@ class HighStriker(ForegroundEffect):
             else:
                 # If duration is set, keep running but don't draw anything
                 return elapsed_time < self.duration
-        
+
         # Draw the puck
         for i in range(self.puck_size):
             pixel_pos = int(position + i)
             if 0 <= pixel_pos < self.width:
                 self.strip.setPixelColor(pixel_pos, self.color)
-        
+
         return True
 
 
@@ -1113,7 +1113,7 @@ class CircleWhip(ForegroundEffect):
     def init(self, r=255, g=0, b=0, width_pct=0.5, speed=2.0, duration=None):
         """
         Initialize the circle whip effect.
-        
+
         Args:
             r, g, b: Color of the whip line
             width_pct: Width of the line as a percentage of the total strip (e.g., 0.5 for 0.5%)
@@ -1129,13 +1129,13 @@ class CircleWhip(ForegroundEffect):
         # Calculate how far around the circle we've traveled
         # speed is in circles per second, so position is a fraction of the strip length
         position_fraction = (elapsed_time * self.speed) % 1.0
-        
+
         # Convert to pixel position
         start_pixel = int(position_fraction * self.width)
-        
+
         # Draw the line of pixels using slice assignment
         end_pixel = start_pixel + self.line_width
-        
+
         if end_pixel <= self.width:
             # Line doesn't wrap around - simple slice
             self.strip[start_pixel:end_pixel] = self.color
@@ -1144,11 +1144,11 @@ class CircleWhip(ForegroundEffect):
             self.strip[start_pixel:self.width] = self.color
             wrap_pixels = end_pixel - self.width
             self.strip[0:wrap_pixels] = self.color
-        
+
         # Check duration if specified
         if self.duration is not None:
             return elapsed_time < self.duration
-        
+
         # Run forever if no duration
         return True
 
@@ -1158,12 +1158,12 @@ class NewtonsCradle(ForegroundEffect):
     Simulates Newton's cradle with balls swinging back and forth transferring momentum.
     The balls at the ends swing while the middle ones stay mostly stationary.
     """
-    
-    def init(self, num_balls=5, ball_width_pct=2.0, h=0.6, s=0.8, v=1.0, 
+
+    def init(self, num_balls=5, ball_width_pct=2.0, h=0.6, s=0.8, v=1.0,
              swing_duration=1.0, duration=None):
         """
         Initialize the Newton's Cradle effect.
-        
+
         Args:
             num_balls: Number of balls in the cradle
             ball_width_pct: Width of each ball as percentage of strip
@@ -1177,60 +1177,60 @@ class NewtonsCradle(ForegroundEffect):
         self.ball_color = Color(r, g, b)
         self.swing_duration = swing_duration
         self.duration = duration
-        
+
         # Calculate spacing between balls
         total_ball_width = self.num_balls * self.ball_width
         if self.num_balls > 1:
             self.spacing = (self.width - total_ball_width) / (self.num_balls - 1)
         else:
             self.spacing = 0
-            
+
         # Calculate rest positions for each ball
         self.rest_positions = []
         for i in range(self.num_balls):
             pos = i * (self.ball_width + self.spacing)
             self.rest_positions.append(pos)
-            
+
         # Physics parameters
         self.max_angle = math.pi / 4  # 45 degrees max swing
         self.swing_height = self.width * 0.3  # Maximum displacement
-        
+
     def step(self, elapsed_time):
         # Calculate phase of swing (0 to 2π represents one complete cycle)
         phase = (elapsed_time / self.swing_duration) * math.pi
-        
+
         # Determine which balls are swinging
         # In a Newton's cradle, when left ball(s) swing, right ball(s) respond
         # We'll simulate the classic pattern where one ball swings on each side alternately
-        
+
         # Create a list to store current positions
         current_positions = list(self.rest_positions)
-        
+
         # Calculate swing state
         swing_value = math.sin(phase)
-        
+
         if swing_value > 0:
             # Left ball swinging right, right ball at rest
             # Move the leftmost ball
             displacement = swing_value * self.swing_height
             current_positions[0] = self.rest_positions[0] + displacement
-            
+
             # Add slight motion to middle balls for realism (small vibration)
             for i in range(1, self.num_balls - 1):
                 vibration = math.sin(phase * 4) * 0.5  # Small high-frequency vibration
                 current_positions[i] = self.rest_positions[i] + vibration
-                
+
         else:
-            # Right ball swinging left, left ball at rest  
+            # Right ball swinging left, left ball at rest
             # Move the rightmost ball
             displacement = -swing_value * self.swing_height
             current_positions[-1] = self.rest_positions[-1] - displacement
-            
+
             # Add slight motion to middle balls for realism
             for i in range(1, self.num_balls - 1):
                 vibration = math.sin(phase * 4) * 0.5
                 current_positions[i] = self.rest_positions[i] + vibration
-        
+
         # Draw the balls at their current positions
         for i, pos in enumerate(current_positions):
             # Calculate intensity based on motion (moving balls are brighter)
@@ -1240,21 +1240,125 @@ class NewtonsCradle(ForegroundEffect):
                 intensity = 0.7 + 0.3 * abs(swing_value)
             else:
                 intensity = 0.5  # Dimmer for stationary balls
-                
+
             # Apply intensity to color
             r, g, b = Effect.unpack_color(self.ball_color)
             ball_color = Color(int(r * intensity), int(g * intensity), int(b * intensity))
-            
+
             # Draw the ball
             for j in range(self.ball_width):
                 pixel_pos = int(pos + j)
                 if 0 <= pixel_pos < self.width:
                     self.strip.setPixelColor(pixel_pos, ball_color)
-        
+
         # Check duration if specified
         if self.duration is not None:
             return elapsed_time < self.duration
-        
+
+        # Run forever if no duration
+        return True
+
+
+class LighthouseSweep(ForegroundEffect):
+    """
+    Simulates a lighthouse beacon sweeping around in a circle.
+    Perfect for the circular_strip that goes around the boat.
+    Features a bright center beam with gradual falloff and optional atmospheric effects.
+    """
+
+    def init(self, rotation_speed=0.5, beam_width_pct=5.0, beam_color_h=0.15,
+             beam_intensity=1.0, has_fog=True, duration=None):
+        """
+        Initialize the lighthouse sweep effect.
+
+        Args:
+            rotation_speed: Rotations per second (0.5 = one rotation every 2 seconds)
+            beam_width_pct: Width of the main beam as percentage of strip
+            beam_color_h: Hue of the beam (0.15 = warm white/yellow)
+            beam_intensity: Maximum brightness of the beam (0.0-1.0)
+            has_fog: Whether to add atmospheric fog effect
+            duration: Total duration (None for continuous)
+        """
+        self.rotation_speed = rotation_speed
+        self.beam_width = max(1, int((beam_width_pct / 100.0) * self.width))
+        self.beam_color_h = beam_color_h
+        self.beam_intensity = beam_intensity
+        self.has_fog = has_fog
+        self.duration = duration
+
+        # Calculate beam characteristics
+        self.core_width = max(1, self.beam_width // 3)  # Bright core
+        self.halo_width = self.beam_width * 2  # Dimmer halo around beam
+
+    def step(self, elapsed_time):
+        # Calculate current beam position
+        rotation_fraction = (elapsed_time * self.rotation_speed) % 1.0
+        beam_center = int(rotation_fraction * self.width)
+
+        # Draw the lighthouse beam
+        for i in range(self.width):
+            # Calculate distance from beam center (handling wrap-around)
+            dist_forward = abs(i - beam_center)
+            dist_wrapped = self.width - dist_forward
+            distance = min(dist_forward, dist_wrapped)
+
+            # Initialize with black
+            r, g, b = 0, 0, 0
+
+            # Core beam (brightest)
+            if distance <= self.core_width:
+                intensity = self.beam_intensity
+                # Very bright, slightly warm white
+                h = self.beam_color_h
+                s = 0.1  # Low saturation for near-white
+                v = intensity
+                r, g, b = self.hsv_to_rgb(h, s, v)
+
+            # Main beam (gradual falloff)
+            elif distance <= self.beam_width:
+                # Falloff from core edge to beam edge
+                falloff = 1.0 - (distance - self.core_width) / (self.beam_width - self.core_width)
+                intensity = self.beam_intensity * falloff * 0.8
+                h = self.beam_color_h
+                s = 0.2  # Slightly more saturated
+                v = intensity
+                r, g, b = self.hsv_to_rgb(h, s, v)
+
+            # Halo (atmospheric scattering)
+            elif distance <= self.halo_width:
+                # Very gradual falloff for atmospheric effect
+                falloff = 1.0 - (distance - self.beam_width) / (self.halo_width - self.beam_width)
+                intensity = self.beam_intensity * falloff * 0.3
+                h = self.beam_color_h
+                s = 0.3  # More saturated in halo
+                v = intensity
+                r, g, b = self.hsv_to_rgb(h, s, v)
+
+            # Add fog effect if enabled (subtle illumination everywhere)
+            if self.has_fog and distance > self.halo_width:
+                # Fog catches some light even far from beam
+                fog_intensity = 0.05 * self.beam_intensity
+                # Bluish fog color
+                h = 0.6
+                s = 0.3
+                v = fog_intensity
+                r, g, b = self.hsv_to_rgb(h, s, v)
+
+            # Add occasional flicker for realism
+            if distance <= self.core_width and random.random() < 0.02:
+                # Slight intensity variation in core
+                flicker = 0.9 + random.random() * 0.1
+                r = int(r * flicker)
+                g = int(g * flicker)
+                b = int(b * flicker)
+
+            # Set the pixel
+            self.strip.setPixelColor(i, Color(r, g, b))
+
+        # Check duration if specified
+        if self.duration is not None:
+            return elapsed_time < self.duration
+
         # Run forever if no duration
         return True
 
@@ -1265,11 +1369,11 @@ class BowWave(BackgroundEffect):
     When idle, shows a gentle pulsing. When moving, creates a wave effect
     that travels from bow to stern with foam and turbulence.
     """
-    
+
     def init(self, max_speed_knots=18.0, bow_position=0.15, duration=None):
         """
         Initialize the bow wave effect.
-        
+
         Args:
             max_speed_knots: Maximum expected boat speed for scaling effects
             bow_position: Position of bow as fraction of strip (0.15 = 15% from start)
@@ -1278,7 +1382,7 @@ class BowWave(BackgroundEffect):
         self.max_speed_knots = max_speed_knots
         self.bow_position = bow_position
         self.duration = duration
-        
+
         # GPS setup
         try:
             import gps
@@ -1288,28 +1392,28 @@ class BowWave(BackgroundEffect):
             self.gps_session = None
             self.gps_available = False
             print("GPS not available, using demo mode")
-        
+
         # Calculate bow pixel position
         self.bow_pixel = int(self.width * self.bow_position)
-        
+
         # Wave parameters
         self.wave_particles = []  # List of (position, birth_time, initial_speed)
         self.last_spawn_time = 0
         self.spawn_interval = 0.1  # Base spawn interval when moving
-        
+
         # Color definitions for water effects
         self.foam_color = Color(255, 255, 255)  # White foam
         self.wave_color = Color(0, 100, 150)    # Blue-green wave
         self.deep_water = Color(0, 20, 40)      # Dark blue water
         self.turbulence_color = Color(50, 150, 200)  # Lighter blue for turbulence
-        
+
     def get_gps_speed_knots(self):
         """Get current speed in knots from GPS, or 0 if unavailable."""
         if not self.gps_available:
             # Demo mode: simulate varying speed
             demo_speed = 5 + 5 * math.sin(time.time() * 0.2)
             return max(0, demo_speed)
-            
+
         try:
             # Get the latest GPS report
             report = self.gps_session.next()
@@ -1320,29 +1424,29 @@ class BowWave(BackgroundEffect):
                 return speed_knots
         except:
             pass
-        
+
         return 0.0
-    
+
     def step(self, elapsed_time):
         # Get current boat speed
         speed_knots = self.get_gps_speed_knots()
         speed_ratio = min(speed_knots / self.max_speed_knots, 1.0)
-        
+
         # Clear background to deep water color
         for i in range(self.width):
             self.background[i] = self.deep_water
-        
+
         if speed_knots < 0.5:
             # Idle mode - gentle pulsing at bow position
             pulse_phase = math.sin(elapsed_time * 2) * 0.5 + 0.5
             pulse_width = int(self.width * 0.1)
-            
-            for i in range(max(0, self.bow_pixel - pulse_width), 
+
+            for i in range(max(0, self.bow_pixel - pulse_width),
                           min(self.width, self.bow_pixel + pulse_width)):
                 distance = abs(i - self.bow_pixel)
                 intensity = max(0, 1 - distance / pulse_width)
                 intensity *= pulse_phase
-                
+
                 self.background[i] = Effect.interpolate_color(
                     self.deep_water,
                     self.wave_color,
@@ -1350,40 +1454,40 @@ class BowWave(BackgroundEffect):
                 )
         else:
             # Moving mode - generate bow wave
-            
+
             # Spawn new wave particles at bow
             spawn_rate = 1.0 / (self.spawn_interval / max(speed_ratio, 0.1))
             if elapsed_time - self.last_spawn_time > 1.0 / spawn_rate:
                 initial_speed = 50 + speed_ratio * 150  # pixels per second
                 self.wave_particles.append((self.bow_pixel, elapsed_time, initial_speed))
                 self.last_spawn_time = elapsed_time
-            
+
             # Update and draw wave particles
             active_particles = []
             for pos, birth_time, initial_speed in self.wave_particles:
                 age = elapsed_time - birth_time
-                
+
                 # Particle physics - waves travel toward stern with decay
                 travel_distance = initial_speed * age * (1 - age * 0.3)  # Decay factor
                 current_pos = pos + travel_distance
-                
+
                 # Remove particles that have left the strip
                 if current_pos >= self.width or age > 3.0:
                     continue
-                    
+
                 active_particles.append((pos, birth_time, initial_speed))
-                
+
                 # Draw the wave with foam at the crest
                 wave_width = int(10 + speed_ratio * 20)
                 for i in range(int(current_pos - wave_width), int(current_pos + wave_width)):
                     if 0 <= i < self.width:
                         distance = abs(i - current_pos)
                         intensity = max(0, 1 - distance / wave_width)
-                        
+
                         # Age fade - older waves are dimmer
                         age_fade = max(0, 1 - age / 3.0)
                         intensity *= age_fade
-                        
+
                         # Foam at wave crest (center of wave)
                         if distance < wave_width * 0.2:
                             # White foam
@@ -1399,13 +1503,13 @@ class BowWave(BackgroundEffect):
                                 self.turbulence_color,
                                 intensity * 0.7
                             )
-                        
+
                         # Blend with existing color for layered effect
                         existing = self.background[i]
                         self.background[i] = Effect.interpolate_color(existing, color, 0.7)
-            
+
             self.wave_particles = active_particles
-            
+
             # Add continuous turbulence at bow when at high speed
             if speed_ratio > 0.3:
                 turb_width = int(5 + speed_ratio * 10)
@@ -1414,7 +1518,7 @@ class BowWave(BackgroundEffect):
                     distance = abs(i - self.bow_pixel)
                     turb_intensity = max(0, 1 - distance / turb_width)
                     turb_intensity *= speed_ratio
-                    
+
                     # Add random sparkle for foam
                     if random.random() < turb_intensity * 0.3:
                         self.background[i] = self.foam_color
@@ -1424,11 +1528,11 @@ class BowWave(BackgroundEffect):
                             self.turbulence_color,
                             turb_intensity * 0.5
                         )
-        
+
         # Check duration if specified
         if self.duration is not None:
             return elapsed_time < self.duration
-        
+
         # Run forever if no duration
         return True
 
@@ -1472,8 +1576,8 @@ dispatcher.run_foreground_effect(
 # Run a high striker effect - like a carnival game
 high_striker = HighStriker(strip)
 dispatcher.run_foreground_effect(
-    high_striker.start(r=255, g=255, b=0, puck_size_pct=5.0, 
-                      launch_velocity_pct_per_sec=100.0, 
+    high_striker.start(r=255, g=255, b=0, puck_size_pct=5.0,
+                      launch_velocity_pct_per_sec=100.0,
                       acceleration_pct_per_sec2=-50.0)
 )
 
