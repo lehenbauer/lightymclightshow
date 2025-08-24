@@ -4,28 +4,26 @@ for lightymclightshow effects.
 """
 
 from rpi_ws281x import PixelStrip, Color, ws
-from hardware import (LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA,
-                      LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP_TYPE)
 
 
 class PhysicalStrip(PixelStrip):
     """Extends PixelStrip with background buffer and convenience methods."""
 
-    def __init__(self, led_count=LED_COUNT, led_pin=LED_PIN, freq_hz=LED_FREQ_HZ,
-                 dma=LED_DMA, invert=LED_INVERT, brightness=LED_BRIGHTNESS,
-                 channel=LED_CHANNEL, strip_type=LED_STRIP_TYPE):
+    def __init__(self, led_count, led_pin, freq_hz,
+                 dma, invert, brightness,
+                 channel, strip_type=ws.WS2811_STRIP_GRB):
         """
         Initialize a PhysicalStrip with LED configuration.
 
         Args:
-            led_count: Number of LED pixels (default from hardware.py)
-            led_pin: GPIO pin connected to the pixels (default from hardware.py)
-            freq_hz: LED signal frequency in hertz (default from hardware.py)
-            dma: DMA channel to use for generating signal (default from hardware.py)
-            invert: True to invert the signal (default from hardware.py)
-            brightness: Set to 0 for darkest and 255 for brightest (default from hardware.py)
-            channel: Channel for GPIOs 13, 19, 41, 45 or 53 (default from hardware.py)
-            strip_type: Strip type configuration (default from hardware.py)
+            led_count: Number of LED pixels
+            led_pin: GPIO pin connected to the pixels
+            freq_hz: LED signal frequency in hertz
+            dma: DMA channel to use for generating signal
+            invert: True to invert the signal
+            brightness: Set to 0 for darkest and 255 for brightest
+            channel: Channel for GPIOs 13, 19, 41, 45 or 53
+            strip_type: Strip type configuration (default: WS2811_STRIP_GRB)
         """
         # Initialize parent PixelStrip
         super().__init__(led_count, led_pin, freq_hz, dma, invert,
