@@ -180,15 +180,18 @@ async def start_unix_server(manager, socket_path):
     import os
     if os.path.exists(socket_path):
         os.unlink(socket_path)
-    server = await asyncio.start_unix_server(lambda r, w: client_task(r, w, manager), path=socket_path)
+    server = await asyncio.start_unix_server(lambda r, w: _client_task(r, w, manager), path=socket_path)
     os.chmod(socket_path, 0o660)
     return server
 
 async def start_tcp_server(manager, host, port):
-    return await asyncio.start_server(lambda r, w: client_task(r, w, manager), host=host, port=port)
+    return await asyncio.start_server(lambda r, w: _client_task(r, w, manager), host=host, port=port)
 
 async def main(socket_path, tcp, verbose=False):
-    # init dispatcher, manager (as you already do) ...
+    # Initialize dispatcher and manager
+    dispatcher = Dispatcher()
+    mgr = EffectManager(dispatcher)
+
     servers = []
     if socket_path:
         servers.append(await start_unix_server(mgr, socket_path))
