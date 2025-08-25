@@ -6,9 +6,9 @@ import time
 import sys
 import random
 
-from steelyglint import *
-from physical_strip import PhysicalStrip
-from logical_strip import LogicalStrip
+from gen2.steelyglint import *
+from gen2.physical_strip import PhysicalStrip
+from gen2.logical_strip import LogicalStrip
 
 physical_strip = initialize_strips()
 starboard_physical_strip = physical_strip[0]

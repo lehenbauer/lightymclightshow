@@ -1,0 +1,15 @@
+[Unit]
+Description=Steely Glint Lightshow Daemon (root; owns WS281x)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m gen2.daemon.lightsd --socket /run/lightymc.sock
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

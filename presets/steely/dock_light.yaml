@@ -1,0 +1,6 @@
+name: "Dock Light"
+steps:
+  - effect: fill_region
+    layer: bg
+    params: {region: "front:100", color: [255,255,255], level: 1.0}
+

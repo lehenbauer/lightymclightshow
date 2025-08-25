@@ -1,0 +1,9 @@
+name: "Navigation Lights"
+steps:
+  - effect: fill_region
+    layer: bg
+    params: {region: "port", color: [255, 0, 0], level: 0.9}
+  - effect: fill_region
+    layer: bg
+    params: {region: "starboard", color: [0, 255, 0], level: 0.9}
+

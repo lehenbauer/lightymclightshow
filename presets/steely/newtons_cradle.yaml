@@ -1,0 +1,6 @@
+name: "Newton's Cradle"
+steps:
+  - effect: newtons_cradle
+    layer: fg
+    params: {balls: 5, tempo: 1.0, level: 0.8}
+

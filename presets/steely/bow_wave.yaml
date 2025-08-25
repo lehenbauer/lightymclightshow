@@ -1,0 +1,6 @@
+name: "Bow Wave"
+steps:
+  - effect: bow_wave
+    layer: fg
+    params: {speed: 1.2, wavelength: 60.0, level: 0.8}
+

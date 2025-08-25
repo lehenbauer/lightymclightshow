@@ -76,6 +76,7 @@ Since each RGB LED can be individually set to one of about four million colors, 
 
 apt install git cmake
 apt install python3-dev
+apt install python3-cairo-dev
 
 
 https://github.com/jgarff/rpi_ws281x?tab=readme-ov-file
@@ -320,5 +321,12 @@ number the lights from 0 within a segment
 the dock segment might have a horizontal that's 100 wide and four verticals that are 40 high.
 
 so we might have horiz and vert1 through vert4
+
+## webinating
+
+sudo groupadd -f lights
+sudo usermod -aG lights www-data
+
+
 
 

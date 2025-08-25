@@ -4,7 +4,7 @@ import random
 import heapq
 from abc import ABC, abstractmethod
 from rpi_ws281x import Color
-from image_stuff import load_and_resize_image, get_row_pixels, list_image_files
+from gen2.image_stuff import load_and_resize_image, get_row_pixels, list_image_files
 
 
 class Timeline:

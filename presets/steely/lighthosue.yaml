@@ -1,0 +1,6 @@
+name: "Steely Lighthouse"
+steps:
+  - effect: lighthouse
+    layer: fg
+    params: {speed: 0.7, hue: 0.6, width: 40, level: 0.9}
+

@@ -1,0 +1,17 @@
+[Unit]
+Description=Steely Glint Web UI (unprivileged)
+After=lightymc-lightsd.service
+Requires=lightymc-lightsd.service
+
+[Service]
+Type=simple
+User=steely
+Group=steely
+WorkingDirectory=/home/steely/lightymclightshow/gen2
+Environment=PYTHONUNBUFFERED=1
+# Example: uvicorn with your FastAPI app
+ExecStart=/usr/bin/python3 -m gen2.server.app --port 8080 --socket /run/lightymc.sock
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

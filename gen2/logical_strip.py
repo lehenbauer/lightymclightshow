@@ -5,7 +5,7 @@ support for reversed pixel ranges.
 """
 
 from rpi_ws281x import Color
-from physical_strip import PhysicalStrip
+from gen2.physical_strip import PhysicalStrip
 
 
 class LogicalStrip:

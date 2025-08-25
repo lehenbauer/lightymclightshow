@@ -65,3 +65,21 @@ A virtual strip will work a lot like a physical strip.  self.strip will be a vir
 
 I kind of don't like every single pixel in a virtual strip identifying the physical strip.  It feels slow.  It probably doesn't much matter.  It kinda has to be that way but usually there will be long consecutive runs of pixels from the same strip.
 
+## Moving to a mobile web UI
+
+Right now all the demos are run from the command line.  
+
+We need to move to a mobile web UI that can run on a phone or tablet and control the effects.  The UI should be able to:
+
+- stop all effects and blackout the strips
+- power off the computer
+- Start and stop effects
+- Queue effects
+- Change effect parameters
+- Show the current state of the effects
+- Show the current state of the logical strips
+- Show the current state of the dispatcher and orchestrator
+
+please examine the gen2 directory of my lightymclightshow project at GitHub at https://github.com/lehenbauer/lightymclightshow/tree/async-alpha-gamma/gen2. It's in python and it uses the WS281x LED strips. Files with the name "steely" in them relate to an installation on our pontoon boat, Steely Glint. It has two strips of 470 RGB LEDs, one on the port side and one on the starboard side. The logical strip stuff allows us to call the frontmost pixels 0 even though 0 actually started at the back of the boat. The strips start at the center of the bow and proceed outward. Many effects are defined in dispatcher.py and steelydemo*.py are little driver programs to run the demos. I am about ready to take the next step. I'd like to create a mobile-friendly web UI to drive the lightshow. Something that will replace all the demo programs. I suppose the raspberry pi will offer a wifi connection for peoples' phones. I've done some flask apps. it's OK. but I'd like the website to be somewhat modern. please suggest what web technologies you think I should use, and how the demos can be run not as demo programs (currently I'm running them from the command line on my laptop) but instead from the web. Also I'm gonna want to do some stuff that aren't purely effects. like I might want a way to light all the pixels at the front of the boat white like as a dock light, and I might want to show red and green as port and starboard nav lights. so just cogitate and respond with your best suggestions for how I can take this technology to the next level. You might want to look at the README file and the like in the top level directory (one up from gen2) as well. Thanks!
+
+

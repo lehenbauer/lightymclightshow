@@ -7,7 +7,7 @@
 
 import time
 from rpi_ws281x import Color, ws
-from physical_strip import PhysicalStrip
+from gen2.physical_strip import PhysicalStrip
 
 # LED strip configuration:
 LED_COUNT = 470       # Number of LED pixels per strip
