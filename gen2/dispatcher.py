@@ -304,11 +304,9 @@ class Dispatcher:
         for strip in strips_to_update:
             strip.show()
 
-        # Sleep to maintain frame rate
-        elapsed = time.time() - frame_start
-        sleep_time = self.frame_time - elapsed
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+        # Note: Sleep removed here - the daemon handles timing asynchronously
+        # to avoid blocking the event loop. Direct users of Dispatcher.run()
+        # will need to handle their own timing.
 
         self.frame_count += 1
 
@@ -329,7 +327,14 @@ class Dispatcher:
                 except Exception as e:
                     print(f"Error executing scheduled action: {action}\n{e}")
 
+            frame_start = time.time()
             self.run_frame()
+
+            # Sleep to maintain frame rate (for standalone usage)
+            elapsed = time.time() - frame_start
+            sleep_time = self.frame_time - elapsed
+            if sleep_time > 0:
+                time.sleep(sleep_time)
 
             if duration and (time.time() - self.start_time) >= duration:
                 break
@@ -1386,12 +1391,20 @@ class BowWave(BackgroundEffect):
         # GPS setup
         try:
             import gps
-            self.gps_session = gps.gps(mode=gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
-            self.gps_available = True
-        except:
+            import socket
+            # Set a short timeout for GPS connection
+            old_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(0.5)  # 500ms timeout
+            try:
+                self.gps_session = gps.gps(mode=gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
+                self.gps_available = True
+                print("GPS connected successfully")
+            finally:
+                socket.setdefaulttimeout(old_timeout)
+        except Exception as e:
             self.gps_session = None
             self.gps_available = False
-            print("GPS not available, using demo mode")
+            print(f"GPS not available ({e}), using demo mode")
 
         # Calculate bow pixel position
         self.bow_pixel = int(self.width * self.bow_position)
@@ -1400,6 +1413,10 @@ class BowWave(BackgroundEffect):
         self.wave_particles = []  # List of (position, birth_time, initial_speed)
         self.last_spawn_time = 0
         self.spawn_interval = 0.1  # Base spawn interval when moving
+
+        # Cache GPS speed to avoid checking every frame
+        self.cached_speed = 0.0
+        self.last_gps_check = 0
 
         # Color definitions for water effects
         self.foam_color = Color(255, 255, 255)  # White foam
@@ -1414,18 +1431,31 @@ class BowWave(BackgroundEffect):
             demo_speed = 5 + 5 * math.sin(time.time() * 0.2)
             return max(0, demo_speed)
 
-        try:
-            # Get the latest GPS report
-            report = self.gps_session.next()
-            if report['class'] == 'TPV' and hasattr(report, 'speed'):
-                # GPS speed is in m/s, convert to knots (1 m/s = 1.94384 knots)
-                speed_mps = report.speed
-                speed_knots = speed_mps * 1.94384
-                return speed_knots
-        except:
-            pass
+        # Only check GPS every 2 seconds because it doesn't change
+        # very quickly on a boat and NMEA is probably only that fast
+        # anyway
+        now = time.time()
+        if now - self.last_gps_check < 2.0:
+            return self.cached_speed
 
-        return 0.0
+        self.last_gps_check = now
+
+        try:
+            # Check if there's a report waiting (non-blocking)
+            if self.gps_session.waiting():
+                # Get the latest GPS report
+                report = self.gps_session.next()
+                if report['class'] == 'TPV' and hasattr(report, 'speed'):
+                    # GPS speed is in m/s, convert to knots (1 m/s = 1.94384 knots)
+                    speed_mps = report.speed
+                    speed_knots = speed_mps * 1.94384
+                    self.cached_speed = speed_knots
+                    return speed_knots
+        except Exception as e:
+            # If GPS fails, switch to demo mode
+            print(f"GPS read error ({e}), continuing with cached speed")
+
+        return self.cached_speed
 
     def step(self, elapsed_time):
         # Get current boat speed

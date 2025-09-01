@@ -62,15 +62,25 @@ class EffectManager:
             except asyncio.QueueEmpty:
                 pass
 
-            # 3) Run a frame
+            # 3) Run a frame (but don't block the event loop)
+            frame_start = time.time()
             self.d.run_frame()
+            frame_elapsed = time.time() - frame_start
+
+            # Log if frame took too long (>50ms)
+            if frame_elapsed > 0.05:
+                print(f"[{time.strftime('%H:%M:%S')}] Warning: Frame took {frame_elapsed:.3f}s")
 
             # 4) Broadcast ~5Hz status
             if int(virtual_now * 5) != int((virtual_now - (self.d.frame_time)) * 5):
                 await self._broadcast({"event": "status", "data": self._status()})
 
-            # Yield control
-            await asyncio.sleep(0)
+            # Yield control and maintain frame rate asynchronously
+            sleep_time = self.d.frame_time - frame_elapsed
+            if sleep_time > 0:
+                await asyncio.sleep(sleep_time)
+            else:
+                await asyncio.sleep(0)
 
     def _status(self) -> Dict[str, Any]:
         def capture(eff):
@@ -107,13 +117,19 @@ class EffectManager:
         id_ = cmd.get("id")
         w = cmd.get("writer")
 
+        # Log incoming command
+        print(f"[{time.strftime('%H:%M:%S')}] Received command: {method} with params: {params}")
+
         try:
             if method == "subscribe":
                 self.subs.add(w)
+                print(f"[{time.strftime('%H:%M:%S')}] Client subscribed to status updates")
                 await self._reply(w, id_, result={"ok": True}); return
 
             if method == "list_effects":
-                await self._reply(w, id_, result={"effects": sorted(REGISTRY.keys())}); return
+                effects = sorted(REGISTRY.keys())
+                print(f"[{time.strftime('%H:%M:%S')}] Listing {len(effects)} available effects")
+                await self._reply(w, id_, result={"effects": effects}); return
 
             if method == "start_effect":
                 name = params["name"]
@@ -122,7 +138,7 @@ class EffectManager:
                     await self._reply(w, id_, ok=False, error=f"unknown effect '{name}'"); return
                 eff = fn(self.d, **params.get("params", {}))
                 created_ids = []
-                # If the wrapper returned effect(s), assign IDs; if it returned "scheduled", just acknowledge.
+                # If the wrapper returned effect(s), assign IDs
                 if eff is not None and eff != "scheduled":
                     if isinstance(eff, (list, tuple)):
                         for e in eff:
@@ -133,6 +149,11 @@ class EffectManager:
                         eid = self._next_id; self._next_id += 1
                         self._effects[eid] = eff
                         created_ids.append(eid)
+                elif eff == "scheduled":
+                    # For scheduled effects, we can't track them properly
+                    # Log a warning
+                    print(f"[{time.strftime('%H:%M:%S')}] Warning: Effect '{name}' uses scheduling - cannot track or stop individual effects")
+                print(f"[{time.strftime('%H:%M:%S')}] Started effect '{name}' with IDs: {created_ids}")
                 await self._reply(w, id_, result={"effect_ids": created_ids}); return
 
             if method == "stop_effect":
@@ -149,29 +170,54 @@ class EffectManager:
 
             if method == "stop_all":
                 # clear both lists in place
+                bg_count = len(self.d.background_effects)
+                fg_count = len(self.d.foreground_effects)
                 for eff in list(self.d.background_effects):
                     self.d.stop_background_effect(eff)
                 for eff in list(self.d.foreground_effects):
                     self.d.stop_foreground_effect(eff)
                 self._effects.clear()
                 # Also clear pending events
+                event_count = len(self.d.event_queue)
                 self.d.event_queue.clear()
+                print(f"[{time.strftime('%H:%M:%S')}] Stopped all effects ({bg_count} bg, {fg_count} fg) and cleared {event_count} events")
                 await self._reply(w, id_, result=True); return
 
+            if method == "blackout":
+                # Stop all effects and blackout all strips
+                bg_count = len(self.d.background_effects)
+                fg_count = len(self.d.foreground_effects)
+                for eff in list(self.d.background_effects):
+                    self.d.stop_background_effect(eff)
+                for eff in list(self.d.foreground_effects):
+                    self.d.stop_foreground_effect(eff)
+                self._effects.clear()
+                self.d.event_queue.clear()
+                # Blackout all available strips
+                from gen2 import steely_logical
+                print(f"[{time.strftime('%H:%M:%S')}] Blackout: stopping {bg_count} bg, {fg_count} fg effects and turning off all strips")
+                for strip in [steely_logical.starboard_strip, steely_logical.port_strip, steely_logical.circular_strip]:
+                    strip.blackout()
+                print(f"[{time.strftime('%H:%M:%S')}] Blackout complete")
+                await self._reply(w, id_, result=True); return
+
+            print(f"[{time.strftime('%H:%M:%S')}] Unknown method: {method}")
             await self._reply(w, id_, ok=False, error="unknown method")
         except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] Error handling command {method}: {e}")
             await self._reply(w, id_, ok=False, error=str(e))
 
 async def _client_task(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, mgr: EffectManager):
+    print(f"[{time.strftime('%H:%M:%S')}] New client connected")
     try:
         while True:
             msg = await _read_msg(reader)
             msg["writer"] = writer
             await mgr.cmd_q.put(msg)
     except EOFError:
-        pass
+        print(f"[{time.strftime('%H:%M:%S')}] Client disconnected")
     except Exception as e:
-        print("client error:", e)
+        print(f"[{time.strftime('%H:%M:%S')}] Client error: {e}")
     finally:
         with contextlib.suppress(Exception):
             writer.close(); await writer.wait_closed()
@@ -181,7 +227,7 @@ async def start_unix_server(manager, socket_path):
     if os.path.exists(socket_path):
         os.unlink(socket_path)
     server = await asyncio.start_unix_server(lambda r, w: _client_task(r, w, manager), path=socket_path)
-    os.chmod(socket_path, 0o660)
+    os.chmod(socket_path, 0o666)
     return server
 
 async def start_tcp_server(manager, host, port):

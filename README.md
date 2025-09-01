@@ -328,5 +328,16 @@ sudo groupadd -f lights
 sudo usermod -aG lights www-data
 
 
+Run the server:
+
+```
+sudo -E PYTHONPATH=. lightenv/bin/python -m gen2.daemon.lightsd   --socket /tmp/lightymc.sock   --tcp 127.0.0.1:8765   --verbose
+```
+
+Run a demo effect from the command line:
+
+```
+./scripts/lightctl.py --socket /tmp/lightymc.sock start demo.steely.bow_wave
+```
 
 

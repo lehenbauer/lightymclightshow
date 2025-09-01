@@ -77,9 +77,9 @@ def bow_wave(d, *, strip: str,
 # --- Demo-equivalent wrappers mirroring the CLI scripts ---
 
 @effect("demo.steely.lighthouse")
-def demo_steely_lighthouse(d) -> str:
-    # Beam 1 now; Beam 2 at +2s, opposite direction
-    d.schedule(0.0, lambda: lighthouse(d,
+def demo_steely_lighthouse(d):
+    # Create first beam immediately
+    eff1 = lighthouse(d,
         strip="circular",
         rotation_speed=0.5,
         beam_width_pct=5.0,
@@ -87,7 +87,10 @@ def demo_steely_lighthouse(d) -> str:
         beam_intensity=1.0,
         has_fog=True,
         duration=30.0
-    ))
+    )
+
+    # Schedule second beam for 2 seconds later
+    # Note: This scheduled effect won't be tracked by the daemon
     d.schedule(2.0, lambda: lighthouse(d,
         strip="circular",
         rotation_speed=-0.3,
@@ -97,28 +100,36 @@ def demo_steely_lighthouse(d) -> str:
         has_fog=False,
         duration=28.0
     ))
-    return "scheduled"
+
+    # Return the first effect so it can be tracked
+    return eff1
 
 @effect("demo.steely.newtons_cradle")
-def demo_steely_newtons_cradle(d) -> str:
+def demo_steely_newtons_cradle(d):
+    # Create effects immediately instead of scheduling them
+    effects = []
     for strip in ("starboard", "port"):
-        d.schedule(0.0, (lambda st=strip: lambda: newtons_cradle(d,
-            strip=st,
+        eff = newtons_cradle(d,
+            strip=strip,
             num_balls=5,
             ball_width_pct=2.0,
             h=0.6, s=0.8, v=1.0,
             swing_duration=1.0,
             duration=20.0
-        ))())
-    return "scheduled"
+        )
+        effects.append(eff)
+    return effects
 
 @effect("demo.steely.bow_wave")
-def demo_steely_bow_wave(d) -> str:
+def demo_steely_bow_wave(d):
+    # Create effects immediately instead of scheduling them
+    effects = []
     for strip in ("starboard", "port"):
-        d.schedule(0.0, (lambda st=strip: lambda: bow_wave(d,
-            strip=st,
+        eff = bow_wave(d,
+            strip=strip,
             max_speed_knots=18.0,
             bow_position=0.15,
-            duration=None
-        ))())
-    return "scheduled"
+            duration=30.0  # Set a 30 second duration to prevent infinite running
+        )
+        effects.append(eff)
+    return effects

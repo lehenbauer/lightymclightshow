@@ -22,7 +22,12 @@ async def rpc_once(sock: str | None, tcp: str | None, method: str, params: dict 
     reader, writer = await open_conn(sock, tcp)
     msg = {"id": 1, "method": method, "params": params or {}}
     writer.write(pack(msg)); await writer.drain()
-    resp = await read_frame(reader)
+    try:
+        # Add 5 second timeout for daemon response
+        resp = await asyncio.wait_for(read_frame(reader), timeout=5.0)
+    except asyncio.TimeoutError:
+        writer.close(); await writer.wait_closed()
+        raise SystemExit(f"error: daemon did not respond within 5 seconds (may be busy processing)")
     writer.close(); await writer.wait_closed()
     if not resp.get("ok", False):
         raise SystemExit(f"error: {resp.get('error')}")
@@ -71,6 +76,8 @@ async def main():
 
     sub.add_parser("stop-all", help="stop all effects")
 
+    sub.add_parser("blackout", help="stop all effects and blackout all strips")
+
     sub.add_parser("watch", help="subscribe to status stream")
 
     args = ap.parse_args()
@@ -89,6 +96,9 @@ async def main():
             print(r)
         elif args.cmd == "stop-all":
             r = await rpc_once(args.socket, args.tcp, "stop_all")
+            print(r)
+        elif args.cmd == "blackout":
+            r = await rpc_once(args.socket, args.tcp, "blackout")
             print(r)
         elif args.cmd == "watch":
             await watch(args.socket, args.tcp)
