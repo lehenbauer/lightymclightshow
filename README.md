@@ -256,11 +256,13 @@ pip install pyFFTW
 
 ## GPS
 
-We are going to have effects that are GPS-aware.
+We have effects that are GPS-aware such as bow wave.
 
-USB GPS based on the ublox 7 chipset, $20 on Amazon.
+Note that the gps pip package uses old JSON stuff that still provides an encoding
+argument even though it's an error with newer json decoder.  Rather than monkey patch it, we switch to
+using the more up-to-date gpsd-py3
 
-https://www.amazon.com/dp/B01EROIUEW
+There's a USB GPS based on the ublox 7 chipset, $20 on Amazon.  https://www.amazon.com/dp/B01EROIUEW
 
 sudo apt install gpsd gpsd-clients python3-gps
 
@@ -279,7 +281,6 @@ GPSD_SOCKET="/var/run/gpsd.sock"
 # Turn off udev hot‑plug because we are specifying the device explicitly.
 USBAUTO="false"
 ```
-
 
 ### to serve GPS to other machines using gpsd,
 
@@ -339,5 +340,8 @@ Run a demo effect from the command line:
 ```
 ./scripts/lightctl.py --socket /tmp/lightymc.sock start demo.steely.bow_wave
 ```
+
+
+
 
 

@@ -1390,15 +1390,17 @@ class BowWave(BackgroundEffect):
 
         # GPS setup
         try:
-            import gps
+            # Try using gpsd-py3 which should be more compatible with Python 3.11
+            import gpsd
             import socket
             # Set a short timeout for GPS connection
             old_timeout = socket.getdefaulttimeout()
             socket.setdefaulttimeout(0.5)  # 500ms timeout
             try:
-                self.gps_session = gps.gps(mode=gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
+                gpsd.connect()  # Connect to gpsd
+                self.gps_session = gpsd  # Store the module for later use
                 self.gps_available = True
-                print("GPS connected successfully")
+                print("GPS connected successfully (using gpsd-py3)")
             finally:
                 socket.setdefaulttimeout(old_timeout)
         except Exception as e:
@@ -1417,6 +1419,7 @@ class BowWave(BackgroundEffect):
         # Cache GPS speed to avoid checking every frame
         self.cached_speed = 0.0
         self.last_gps_check = 0
+        self.last_gps_error_log = 0
 
         # Color definitions for water effects
         self.foam_color = Color(255, 255, 255)  # White foam
@@ -1441,19 +1444,28 @@ class BowWave(BackgroundEffect):
         self.last_gps_check = now
 
         try:
-            # Check if there's a report waiting (non-blocking)
-            if self.gps_session.waiting():
-                # Get the latest GPS report
-                report = self.gps_session.next()
-                if report['class'] == 'TPV' and hasattr(report, 'speed'):
-                    # GPS speed is in m/s, convert to knots (1 m/s = 1.94384 knots)
-                    speed_mps = report.speed
+            # Use gpsd-py3 API to get current GPS data
+            packet = self.gps_session.get_current()
+
+            # Check if we have valid speed data
+            if packet.mode >= 2:
+                # GPS speed might be available as a property or method
+                speed_mps = None
+                if hasattr(packet, 'speed'):
+                    if callable(packet.speed):
+                        speed_mps = packet.speed()
+                    else:
+                        speed_mps = packet.speed
+
+                if speed_mps is not None:
                     speed_knots = speed_mps * 1.94384
                     self.cached_speed = speed_knots
                     return speed_knots
         except Exception as e:
-            # If GPS fails, switch to demo mode
-            print(f"GPS read error ({e}), continuing with cached speed")
+            # If GPS fails, just use cached speed (don't spam errors)
+            if time.time() - self.last_gps_error_log > 10:  # Only log every 10 seconds
+                print(f"GPS read error ({e}), continuing with cached speed")
+                self.last_gps_error_log = time.time()
 
         return self.cached_speed
 
